@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MisFinanzas PE — Gestión financiera personal</title>
+<!-- ============================================================
+     MisFinanzas PE — App de finanzas personales (Perú)
+     Un solo archivo: HTML + Tailwind (CDN) + JS vanilla + Chart.js (CDN)
+     Datos guardados en localStorage del navegador. Sin backend.
+     ============================================================ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  // Configuración de Tailwind: modo oscuro por clase y paleta propia
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        colors: {
+          brand:  {50:'#eefbf4',100:'#d6f5e3',200:'#b0eacb',300:'#7cd9ad',400:'#46c18b',500:'#22a570',600:'#16855b',700:'#136a4a',800:'#12543d',900:'#104534'},
+          ocean:  {50:'#eff6ff',100:'#dbeafe',400:'#60a5fa',500:'#3b82f6',600:'#2563eb'},
+          danger: {50:'#fef2f2',100:'#fee2e2',400:'#f87171',500:'#ef4444',600:'#dc2626'},
+          amberx: {100:'#fef3c7',400:'#fbbf24',500:'#f59e0b',600:'#d97706'}
+        },
+        boxShadow: {
+          soft: '0 4px 20px -4px rgba(0,0,0,0.08)',
+          card: '0 2px 12px -2px rgba(16,69,52,0.10)'
+        }
+      }
+    }
+  }
+</script>
+<style>
+  /* Transiciones suaves globales y detalles que Tailwind CDN no cubre */
+  * { transition: background-color .25s ease, border-color .25s ease, color .15s ease; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #94a3b8aa; border-radius: 8px; }
+  .modal-bg { backdrop-filter: blur(4px); }
+  .pop-in { animation: popIn .22s ease forwards; }
+  @keyframes popIn { from { opacity:0; transform: translateY(14px) scale(.97);} to { opacity:1; transform:none;} }
+  .fade-in { animation: fadeIn .3s ease forwards; }
+  @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+  .barra { transition: width .6s cubic-bezier(.4,0,.2,1); }
+  input, select, textarea { outline: none; }
+</style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-screen">
+
+<div class="flex min-h-screen">
+
+  <!-- ============ SIDEBAR (escritorio) ============ -->
+  <aside class="hidden lg:flex flex-col w-60 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-4 sticky top-0 h-screen">
+    <div class="flex items-center gap-2 px-2 mb-6">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-ocean-500 flex items-center justify-center text-white text-lg shadow-card">💸</div>
+      <div>
+        <p class="font-extrabold leading-tight">MisFinanzas</p>
+        <p class="text-xs text-slate-400 -mt-0.5">Perú · Soles S/</p>
+      </div>
+    </div>
+    <nav id="nav-desktop" class="flex flex-col gap-1 text-sm font-medium"></nav>
+    <div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-800">
+      <button id="btn-dark" class="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-sm">
+        <span id="dark-icon">🌙</span> <span id="dark-label">Modo oscuro</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENIDO PRINCIPAL ============ -->
+  <main class="flex-1 min-w-0 pb-24 lg:pb-8">
+
+    <!-- Encabezado móvil -->
+    <header class="lg:hidden sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-ocean-500 flex items-center justify-center text-white">💸</div>
+        <span class="font-extrabold">MisFinanzas</span>
+      </div>
+      <button id="btn-dark-m" class="text-xl px-2" title="Cambiar tema">🌙</button>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-4 lg:px-8 pt-5 lg:pt-8">
+
+      <!-- Banner de datos de ejemplo -->
+      <div id="banner-ejemplo" class="hidden mb-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between rounded-2xl border border-amberx-400/50 bg-amberx-100/70 dark:bg-amber-900/20 dark:border-amber-700 px-4 py-3 text-sm fade-in">
+        <p>👋 <b>¡Bienvenido!</b> Cargamos <b>datos de ejemplo</b> para que explores la app. Cuando quieras empezar con tus datos reales, límpialos.</p>
+        <button onclick="limpiarEjemplo()" class="shrink-0 px-3 py-1.5 rounded-lg bg-amberx-500 hover:bg-amberx-600 text-white font-semibold text-xs shadow-sm">Limpiar ejemplos</button>
+      </div>
+
+      <!-- ==================== 1) DASHBOARD ==================== -->
+      <section id="sec-dashboard" class="seccion">
+        <div class="flex items-end justify-between mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">Hola 👋</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400" id="d-fecha-hoy"></p>
+          </div>
+        </div>
+
+        <!-- Indicador de salud financiera -->
+        <div id="d-salud" class="rounded-2xl p-5 mb-5 text-white shadow-card fade-in"></div>
+
+        <!-- Alerta: proyección de gasto del mes vs ingresos -->
+        <div id="d-alerta" class="hidden mb-5 rounded-2xl border border-danger-400/60 bg-danger-50 dark:bg-danger-600/10 px-4 py-3 text-sm text-danger-600 dark:text-danger-400 fade-in"></div>
+
+        <!-- Tarjetas resumen -->
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+          <div class="col-span-2 lg:col-span-1 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:-translate-y-0.5 transition-transform">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">💼 Saldo neto del mes</p>
+            <p id="d-saldo" class="text-xl font-extrabold mt-1"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:-translate-y-0.5 transition-transform">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">📈 Ingresos del mes</p>
+            <p id="d-ingresos" class="text-xl font-extrabold mt-1 text-brand-600 dark:text-brand-400"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:-translate-y-0.5 transition-transform">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">📉 Gastos del mes</p>
+            <p id="d-gastos" class="text-xl font-extrabold mt-1 text-danger-500"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:-translate-y-0.5 transition-transform">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">💳 Deuda de tarjetas</p>
+            <p id="d-deuda" class="text-xl font-extrabold mt-1 text-orange-500"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:-translate-y-0.5 transition-transform">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">🤝 Me deben</p>
+            <p id="d-cobrar" class="text-xl font-extrabold mt-1 text-ocean-500"></p>
+          </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="grid lg:grid-cols-2 gap-4">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">🍩 Gastos del mes por categoría</h3>
+            <p class="text-xs text-slate-400 mb-3">¿En qué se va tu plata este mes?</p>
+            <div class="relative h-64"><canvas id="chartDona"></canvas>
+              <p id="dona-vacio" class="hidden absolute inset-0 flex items-center justify-center text-sm text-slate-400">Sin gastos este mes 🎉</p>
+            </div>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">📊 Ingresos vs Gastos</h3>
+            <p class="text-xs text-slate-400 mb-3">Últimos 6 meses</p>
+            <div class="relative h-64"><canvas id="chartBarras"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 1b) ANALÍTICA ==================== -->
+      <section id="sec-analitica" class="seccion hidden">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">📊 Analítica</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Tus finanzas con lupa de analista · todo se recalcula con cada movimiento</p>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">🎯 Meta de tasa de ahorro:
+            <input type="number" id="cfg-meta-ahorro" min="0" max="100" step="1" onchange="cambiarMetaAhorro(this.value)"
+              class="w-20 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-sm font-bold text-center"> %
+          </label>
+        </div>
+
+        <!-- KPIs -->
+        <div id="kpi-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-5"></div>
+
+        <!-- Insights automáticos -->
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft mb-5">
+          <h3 class="font-bold mb-3">🧠 Insights del mes</h3>
+          <div id="panel-insights" class="space-y-2"></div>
+        </div>
+
+        <!-- Fila 1: tendencias a 12 meses -->
+        <div class="grid lg:grid-cols-2 gap-4 mb-4">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">💚 Tasa de ahorro mensual</h3>
+            <p class="text-xs text-slate-400 mb-3">Últimos 12 meses vs tu meta</p>
+            <div class="relative h-60"><canvas id="chartTasa"></canvas></div>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">🌊 Flujo: ingresos, gastos y ahorro neto</h3>
+            <p class="text-xs text-slate-400 mb-3">12 meses · media móvil 3m del ahorro (punteada)</p>
+            <div class="relative h-60"><canvas id="chartFlujo"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Fila 2: composición del gasto -->
+        <div class="grid lg:grid-cols-2 gap-4 mb-4">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">🧱 Composición del gasto por mes</h3>
+            <p class="text-xs text-slate-400 mb-3">Barras apiladas por categoría · últimos 6 meses</p>
+            <div class="relative h-60"><canvas id="chartStacked"></canvas></div>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">💳 Gasto por método de pago</h3>
+            <p class="text-xs text-slate-400 mb-3">Mes en curso</p>
+            <div class="relative h-60"><canvas id="chartMetodo"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Fila 3: ranking y hábitos -->
+        <div class="grid lg:grid-cols-2 gap-4 mb-4">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">🏆 Top categorías de gasto</h3>
+            <p class="text-xs text-slate-400 mb-3">Mes en curso, con % del total</p>
+            <div class="relative h-60"><canvas id="chartTop"></canvas></div>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">📅 Gasto por día de la semana</h3>
+            <p class="text-xs text-slate-400 mb-3">Últimos 90 días · ¿gastas más los findes?</p>
+            <div class="relative h-60"><canvas id="chartSemana"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Proyección de metas -->
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft mb-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-1">
+            <h3 class="font-bold">🔮 Proyección de meta de ahorro</h3>
+            <select id="sel-meta-proy" onchange="renderChartMeta()" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm"></select>
+          </div>
+          <p id="meta-proy-info" class="text-sm text-slate-500 dark:text-slate-400 mb-3"></p>
+          <div class="relative h-64"><canvas id="chartMetaProy"></canvas></div>
+        </div>
+
+        <!-- Presupuestos por categoría -->
+        <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft mb-4">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h3 class="font-bold">📋 Presupuesto mensual por categoría</h3>
+              <p class="text-xs text-slate-400">Gastado vs presupuestado · mes en curso</p>
+            </div>
+            <button onclick="abrirPresupuestos()" class="px-3 py-1.5 rounded-lg bg-ocean-500 hover:bg-ocean-600 text-white text-xs font-bold shadow-sm">✏️ Editar presupuestos</button>
+          </div>
+          <div id="lista-presupuestos" class="space-y-3"></div>
+        </div>
+
+        <!-- Anomalías y gasto hormiga -->
+        <div class="grid lg:grid-cols-2 gap-4">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold">🚩 Gastos inusuales</h3>
+            <p class="text-xs text-slate-400">Movimientos a más de 2 desviaciones estándar del gasto típico de su categoría.</p>
+            <div id="lista-anomalias" class="space-y-2 mt-3"></div>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold">🐜 Gasto hormiga del mes</h3>
+            <p class="text-xs text-slate-400">Compras menores a S/ 30 que pasan desapercibidas.</p>
+            <div id="hormiga-card" class="mt-3"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== 2) INGRESOS ==================== -->
+      <section id="sec-ingresos" class="seccion hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">📈 Ingresos</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Todo lo que entra a tu bolsillo</p>
+          </div>
+          <button onclick="abrirIngreso()" class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm shadow-card">+ Nuevo ingreso</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <label class="text-sm text-slate-500">Mes:</label>
+          <input type="month" id="f-ing-mes" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm" onchange="renderIngresos()">
+          <button onclick="document.getElementById('f-ing-mes').value='';renderIngresos()" class="text-xs text-ocean-500 hover:underline">Ver todos</button>
+          <span id="ing-total-filtro" class="ml-auto text-sm font-bold text-brand-600 dark:text-brand-400"></span>
+        </div>
+        <div id="lista-ingresos" class="space-y-2"></div>
+      </section>
+
+      <!-- ==================== 3) GASTOS ==================== -->
+      <section id="sec-gastos" class="seccion hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">📉 Gastos</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Registra cada sol que sale</p>
+          </div>
+          <button onclick="abrirGasto()" class="px-4 py-2 rounded-xl bg-danger-500 hover:bg-danger-600 text-white font-semibold text-sm shadow-card">+ Nuevo gasto</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <label class="text-sm text-slate-500">Mes:</label>
+          <input type="month" id="f-gas-mes" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm" onchange="renderGastos()">
+          <select id="f-gas-cat" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm" onchange="renderGastos()">
+            <option value="">Todas las categorías</option>
+          </select>
+          <button onclick="document.getElementById('f-gas-mes').value='';document.getElementById('f-gas-cat').value='';renderGastos()" class="text-xs text-ocean-500 hover:underline">Limpiar filtros</button>
+          <span id="gas-total-filtro" class="ml-auto text-sm font-bold text-danger-500"></span>
+        </div>
+        <div id="lista-gastos" class="space-y-2"></div>
+      </section>
+
+      <!-- ==================== 4) TARJETAS / DEUDAS ==================== -->
+      <section id="sec-tarjetas" class="seccion hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">💳 Tarjetas y deudas</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Controla tu línea y nunca pagues intereses de más</p>
+          </div>
+          <button onclick="abrirTarjeta()" class="px-4 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white font-semibold text-sm shadow-card">+ Nueva tarjeta</button>
+        </div>
+        <div class="rounded-xl bg-ocean-50 dark:bg-slate-900 border border-ocean-100 dark:border-slate-800 p-3 text-xs text-slate-600 dark:text-slate-400 mb-4">
+          💡 <b>Tip:</b> usar menos del <b>30% de tu línea</b> cuida tu score crediticio. Los gastos con método «Tarjeta de crédito» suman automáticamente a la deuda.
+        </div>
+        <div id="lista-tarjetas" class="grid md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- ==================== 5) ME DEBEN ==================== -->
+      <section id="sec-cobrar" class="seccion hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">🤝 Me deben</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Cuentas por cobrar — que no se les olvide 😉</p>
+          </div>
+          <button onclick="abrirCobrar()" class="px-4 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white font-semibold text-sm shadow-card">+ Nueva deuda</button>
+        </div>
+        <div class="rounded-2xl bg-gradient-to-r from-ocean-500 to-brand-500 text-white p-5 shadow-card mb-5">
+          <p class="text-sm opacity-90">Total pendiente por cobrar</p>
+          <p id="total-cobrar" class="text-3xl font-extrabold"></p>
+        </div>
+        <div id="lista-cobrar" class="space-y-2"></div>
+      </section>
+
+      <!-- ==================== 6) METAS DE AHORRO ==================== -->
+      <section id="sec-metas" class="seccion hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">🎯 Metas de ahorro</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Pequeños abonos, grandes logros</p>
+          </div>
+          <button onclick="abrirMeta()" class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm shadow-card">+ Nueva meta</button>
+        </div>
+        <div id="lista-metas" class="grid md:grid-cols-2 gap-4"></div>
+      </section>
+
+      <!-- ==================== 7) MODO EMPRESA ==================== -->
+      <section id="sec-empresa" class="seccion hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">🏢 Mi negocio</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Ingresos y egresos del negocio, separados de lo personal</p>
+          </div>
+          <button onclick="abrirEmpresa()" class="px-4 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white font-semibold text-sm shadow-card">+ Nuevo movimiento</button>
+        </div>
+        <div class="grid grid-cols-3 gap-3 mb-5">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft">
+            <p class="text-xs text-slate-500 dark:text-slate-400">🛒 Ventas (mes)</p>
+            <p id="emp-ventas" class="text-lg font-extrabold text-brand-600 dark:text-brand-400 mt-1"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft">
+            <p class="text-xs text-slate-500 dark:text-slate-400">📦 Costos (mes)</p>
+            <p id="emp-costos" class="text-lg font-extrabold text-danger-500 mt-1"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft">
+            <p class="text-xs text-slate-500 dark:text-slate-400">💵 Utilidad (mes)</p>
+            <p id="emp-utilidad" class="text-lg font-extrabold mt-1"></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mb-4">
+          <label class="text-sm text-slate-500">Mes:</label>
+          <input type="month" id="f-emp-mes" class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm" onchange="renderEmpresa()">
+          <button onclick="document.getElementById('f-emp-mes').value='';renderEmpresa()" class="text-xs text-ocean-500 hover:underline">Ver todos</button>
+        </div>
+        <div id="lista-empresa" class="space-y-2"></div>
+      </section>
+
+      <!-- ==================== 8) AJUSTES ==================== -->
+      <section id="sec-ajustes" class="seccion hidden">
+        <h1 class="text-2xl font-extrabold mb-1">⚙️ Ajustes</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-5">Tu información, bajo tu control</p>
+
+        <div class="space-y-4 max-w-xl">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft flex items-center justify-between gap-4">
+            <div>
+              <p class="font-bold">🏢 Modo empresa</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Activa una sección extra para registrar ventas y costos de tu negocio por separado.</p>
+            </div>
+            <button id="toggle-empresa" onclick="toggleEmpresa()" class="relative w-12 h-7 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0">
+              <span id="toggle-empresa-dot" class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform"></span>
+            </button>
+          </div>
+
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <p class="font-bold mb-1">💾 Respaldo de datos</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Descarga un JSON con todo, o restáuralo en otro dispositivo. Tus datos solo viven en este navegador.</p>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="exportarDatos()" class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm">⬇️ Exportar datos</button>
+              <label class="px-4 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white font-semibold text-sm cursor-pointer">⬆️ Importar datos
+                <input type="file" id="input-import" accept=".json,application/json" class="hidden" onchange="importarDatos(event)">
+              </label>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <p class="font-bold mb-1">🧹 Datos de ejemplo</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Elimina solo los registros de muestra que vienen precargados.</p>
+            <button onclick="limpiarEjemplo()" class="px-4 py-2 rounded-xl bg-amberx-500 hover:bg-amberx-600 text-white font-semibold text-sm">Limpiar datos de ejemplo</button>
+          </div>
+
+          <div class="rounded-2xl bg-danger-50 dark:bg-slate-900 border border-danger-100 dark:border-danger-600/40 p-5 shadow-soft">
+            <p class="font-bold text-danger-600 mb-1">⚠️ Zona de peligro</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Borra absolutamente todos tus datos. Esta acción no se puede deshacer.</p>
+            <button onclick="borrarTodo()" class="px-4 py-2 rounded-xl bg-danger-500 hover:bg-danger-600 text-white font-semibold text-sm">🗑️ Borrar todo</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ============ NAV INFERIOR (móvil) ============ -->
+<nav id="nav-mobile" class="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 flex overflow-x-auto px-1 py-1"></nav>
+
+<!-- ==================== MODALES ==================== -->
+<!-- Cada modal es un overlay con un formulario. Se abren/cierran con abrirModal()/cerrarModal(). -->
+
+<!-- Modal: Ingreso -->
+<div id="modal-ingreso" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-ingreso" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3">
+    <h3 id="titulo-ingreso" class="font-extrabold text-lg">Nuevo ingreso</h3>
+    <input type="hidden" id="ing-id">
+    <div><label class="text-xs font-semibold text-slate-500">Fecha</label>
+      <input type="date" id="ing-fecha" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div><label class="text-xs font-semibold text-slate-500">Monto (S/)</label>
+      <input type="number" id="ing-monto" min="0.01" step="0.01" required placeholder="0.00" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div><label class="text-xs font-semibold text-slate-500">Categoría</label>
+      <select id="ing-cat" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></select></div>
+    <div><label class="text-xs font-semibold text-slate-500">Descripción</label>
+      <input type="text" id="ing-desc" placeholder="Ej: Sueldo de junio" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-ingreso')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Gasto -->
+<div id="modal-gasto" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-gasto" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+    <h3 id="titulo-gasto" class="font-extrabold text-lg">Nuevo gasto</h3>
+    <input type="hidden" id="gas-id">
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Fecha</label>
+        <input type="date" id="gas-fecha" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Monto (S/)</label>
+        <input type="number" id="gas-monto" min="0.01" step="0.01" required placeholder="0.00" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div><label class="text-xs font-semibold text-slate-500">Categoría</label>
+      <select id="gas-cat" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></select></div>
+    <div><label class="text-xs font-semibold text-slate-500">Método de pago</label>
+      <select id="gas-metodo" onchange="toggleSelectTarjeta()" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm">
+        <option>Efectivo</option><option>Débito</option><option>Tarjeta de crédito</option>
+      </select></div>
+    <div id="gas-tarjeta-wrap" class="hidden"><label class="text-xs font-semibold text-slate-500">¿Con qué tarjeta? <span class="text-orange-500">(sumará a su deuda)</span></label>
+      <select id="gas-tarjeta" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></select></div>
+    <div><label class="text-xs font-semibold text-slate-500">Descripción</label>
+      <input type="text" id="gas-desc" placeholder="Ej: Menú del trabajo" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-gasto')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-danger-500 hover:bg-danger-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Tarjeta -->
+<div id="modal-tarjeta" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-tarjeta" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+    <h3 id="titulo-tarjeta" class="font-extrabold text-lg">Nueva tarjeta</h3>
+    <input type="hidden" id="tar-id">
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Nombre</label>
+        <input type="text" id="tar-nombre" required placeholder="Visa Clásica" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Banco</label>
+        <input type="text" id="tar-banco" required placeholder="BCP" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Línea de crédito (S/)</label>
+        <input type="number" id="tar-linea" min="1" step="0.01" required placeholder="5000" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">TCEA (%)</label>
+        <input type="number" id="tar-tcea" min="0" step="0.01" placeholder="84.5" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Día de cierre</label>
+        <input type="number" id="tar-cierre" min="1" max="31" required placeholder="15" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Día de pago</label>
+        <input type="number" id="tar-pago" min="1" max="31" required placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-tarjeta')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Pago a tarjeta -->
+<div id="modal-pago" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-pago" class="pop-in w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3">
+    <h3 class="font-extrabold text-lg">💵 Pagar tarjeta</h3>
+    <p id="pago-tarjeta-nombre" class="text-sm text-slate-500"></p>
+    <input type="hidden" id="pago-tarjeta-id">
+    <div><label class="text-xs font-semibold text-slate-500">Fecha del pago</label>
+      <input type="date" id="pago-fecha" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div><label class="text-xs font-semibold text-slate-500">Monto a pagar (S/)</label>
+      <input type="number" id="pago-monto" min="0.01" step="0.01" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-pago')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold">Registrar pago</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Me deben -->
+<div id="modal-cobrar" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-cobrar" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3">
+    <h3 id="titulo-cobrar" class="font-extrabold text-lg">Nueva cuenta por cobrar</h3>
+    <input type="hidden" id="cob-id">
+    <div><label class="text-xs font-semibold text-slate-500">¿Quién te debe?</label>
+      <input type="text" id="cob-persona" required placeholder="Ej: Diego" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Monto (S/)</label>
+        <input type="number" id="cob-monto" min="0.01" step="0.01" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Fecha</label>
+        <input type="date" id="cob-fecha" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div><label class="text-xs font-semibold text-slate-500">Motivo</label>
+      <input type="text" id="cob-motivo" placeholder="Ej: Préstamo para entradas" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-cobrar')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Meta -->
+<div id="modal-meta" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-meta" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3">
+    <h3 id="titulo-meta" class="font-extrabold text-lg">Nueva meta de ahorro</h3>
+    <input type="hidden" id="met-id">
+    <div><label class="text-xs font-semibold text-slate-500">Nombre de la meta</label>
+      <input type="text" id="met-nombre" required placeholder='Ej: Inicial depa, TOEFL + beca' class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Monto objetivo (S/)</label>
+        <input type="number" id="met-objetivo" min="1" step="0.01" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Ahorrado hasta hoy (S/)</label>
+        <input type="number" id="met-actual" min="0" step="0.01" value="0" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-meta')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Abonar a meta -->
+<div id="modal-abono" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-abono" class="pop-in w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3">
+    <h3 class="font-extrabold text-lg">🪙 Abonar a la meta</h3>
+    <p id="abono-meta-nombre" class="text-sm text-slate-500"></p>
+    <input type="hidden" id="abo-meta-id">
+    <div><label class="text-xs font-semibold text-slate-500">Monto a abonar (S/)</label>
+      <input type="number" id="abo-monto" min="0.01" step="0.01" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-abono')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold">Abonar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Movimiento de empresa -->
+<div id="modal-empresa" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-empresa" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3">
+    <h3 id="titulo-empresa" class="font-extrabold text-lg">Nuevo movimiento del negocio</h3>
+    <input type="hidden" id="emp-id">
+    <div><label class="text-xs font-semibold text-slate-500">Tipo</label>
+      <select id="emp-tipo" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm">
+        <option value="ingreso">🛒 Venta / ingreso</option>
+        <option value="egreso">📦 Costo / egreso</option>
+      </select></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Fecha</label>
+        <input type="date" id="emp-fecha" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Monto (S/)</label>
+        <input type="number" id="emp-monto" min="0.01" step="0.01" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div><label class="text-xs font-semibold text-slate-500">Descripción</label>
+      <input type="text" id="emp-desc" placeholder="Ej: Venta a cliente X" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-empresa')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Presupuestos por categoría -->
+<div id="modal-presupuestos" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-presupuestos" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+    <h3 class="font-extrabold text-lg">📋 Presupuestos mensuales</h3>
+    <p class="text-xs text-slate-400">Define tu tope de gasto por categoría. Deja vacío para no controlar esa categoría.</p>
+    <div id="ppto-campos" class="space-y-2"></div>
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-presupuestos')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Contenedor de toasts (notificaciones) -->
+<div id="toasts" class="fixed top-4 right-4 z-[60] space-y-2 w-72"></div>
+
+<script>
+/* ================================================================
+   LÓGICA DE LA APLICACIÓN (JavaScript vanilla)
+   Todo se guarda en localStorage bajo la clave 'misfinanzas_pe_v1'
+   ================================================================ */
+
+// ---------- Constantes ----------
+const LS_KEY = 'misfinanzas_pe_v1';
+const CATS_INGRESO = ['Sueldo planilla', 'Recibo por honorarios 4ta', 'Freelance', 'Otros'];
+const CATS_GASTO   = ['Alquiler', 'Comida', 'Transporte', 'Salidas', 'Suscripciones', 'Salud', 'Educación', 'Otros'];
+const ICONO_GASTO  = {Alquiler:'🏠', Comida:'🍽️', Transporte:'🚌', Salidas:'🎉', Suscripciones:'📺', Salud:'⚕️', 'Educación':'📚', Otros:'📦'};
+const ICONO_ING    = {'Sueldo planilla':'💼','Recibo por honorarios 4ta':'🧾','Freelance':'💻','Otros':'✨'};
+const MESES_ABR    = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const PALETA       = ['#22a570','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+
+// ---------- Estado global ----------
+let state = null;
+let chDona = null, chBarras = null;
+let tabActiva = 'dashboard';
+
+// ---------- Utilidades ----------
+const $  = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const fmt = n => 'S/ ' + Number(n || 0).toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtFecha = f => { if (!f) return ''; const [y, m, d] = f.split('-'); return `${d}/${m}/${y}`; };
+const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const mesActual = () => hoyISO().slice(0, 7);
+const suma = arr => arr.reduce((a, b) => a + Number(b.monto || 0), 0);
+const delMes = (arr, mes) => mes ? arr.filter(x => (x.fecha || '').startsWith(mes)) : arr.slice();
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ordenarFecha = arr => arr.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+const etiquetaMes = m => MESES_ABR[parseInt(m.slice(5)) - 1] + ' ' + m.slice(2, 4);
+
+function guardar() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+function toast(msg, tipo = 'ok') {
+  const colores = {ok: 'bg-brand-500', error: 'bg-danger-500', info: 'bg-ocean-500'};
+  const el = document.createElement('div');
+  el.className = `${colores[tipo]} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg pop-in`;
+  el.textContent = msg;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2600);
+}
+
+function abrirModal(id)  { $('#' + id).classList.remove('hidden'); }
+function cerrarModal(id) { $('#' + id).classList.add('hidden'); }
+// Cerrar modal al hacer clic fuera del formulario
+document.addEventListener('click', e => {
+  if (e.target.classList && e.target.classList.contains('modal')) e.target.classList.add('hidden');
+});
+
+// ---------- Datos de ejemplo (relativos al mes actual) ----------
+// 12 meses de historia para que la pestaña Analítica luzca completa desde el día uno.
+function datosEjemplo() {
+  const h = new Date();
+  const mes = i => { const d = new Date(h.getFullYear(), h.getMonth() - i, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+  const idBcp = uid(), idIbk = uid();
+  const ingresos = [], gastos = [];
+  for (let i = 11; i >= 0; i--) {
+    const m = mes(i), k = 11 - i; // k = 0 es el mes más antiguo
+    const sueldo = k < 5 ? 3600 : k < 9 ? 3800 : 4100;
+    ingresos.push({id: uid(), ej: true, fecha: m + '-28', monto: sueldo, cat: 'Sueldo planilla', desc: 'Sueldo mensual'});
+    if (k % 3 === 1) ingresos.push({id: uid(), ej: true, fecha: m + '-15', monto: 500 + k * 45, cat: 'Freelance', desc: 'Proyecto freelance'});
+    if (k % 4 === 2) ingresos.push({id: uid(), ej: true, fecha: m + '-20', monto: 350, cat: 'Recibo por honorarios 4ta', desc: 'Asesoría puntual'});
+    gastos.push({id: uid(), ej: true, fecha: m + '-02', monto: 950, cat: 'Alquiler', desc: 'Alquiler depa', metodo: 'Débito', tarjetaId: null});
+    gastos.push({id: uid(), ej: true, fecha: m + '-08', monto: 430 + (k % 4) * 55, cat: 'Comida', desc: 'Mercado y menús', metodo: 'Efectivo', tarjetaId: null});
+    gastos.push({id: uid(), ej: true, fecha: m + '-10', monto: 150 + (k % 3) * 15, cat: 'Transporte', desc: 'Pasajes del mes', metodo: 'Efectivo', tarjetaId: null});
+    gastos.push({id: uid(), ej: true, fecha: m + '-05', monto: 45.90, cat: 'Suscripciones', desc: 'Netflix + Spotify', metodo: 'Tarjeta de crédito', tarjetaId: idBcp});
+    if (k % 2 === 0) gastos.push({id: uid(), ej: true, fecha: m + '-20', monto: 180 + (k % 5) * 30, cat: 'Salidas', desc: 'Salida con amigos', metodo: 'Tarjeta de crédito', tarjetaId: idBcp});
+    if (k === 7) gastos.push({id: uid(), ej: true, fecha: m + '-12', monto: 480, cat: 'Educación', desc: 'Curso de inglés', metodo: 'Tarjeta de crédito', tarjetaId: idIbk});
+    if (k === 9) gastos.push({id: uid(), ej: true, fecha: m + '-17', monto: 260, cat: 'Salud', desc: 'Consulta + medicinas', metodo: 'Débito', tarjetaId: null});
+  }
+  // Gastos hormiga + un gasto inusual en el mes actual, para ver la analítica en acción
+  const mAct = mes(0);
+  [['-03', 8.50, 'Comida', 'Café'], ['-04', 12, 'Transporte', 'Taxi corto'], ['-05', 6.90, 'Comida', 'Antojo de la tarde'],
+   ['-07', 15, 'Otros', 'Propina app'], ['-09', 9.50, 'Comida', 'Café con amigos'], ['-10', 22, 'Transporte', 'Taxi']]
+    .forEach(([d, mo, c, de]) => gastos.push({id: uid(), ej: true, fecha: mAct + d, monto: mo, cat: c, desc: de, metodo: 'Efectivo', tarjetaId: null}));
+  gastos.push({id: uid(), ej: true, fecha: mAct + '-06', monto: 520, cat: 'Salidas', desc: 'Concierto (gasto inusual)', metodo: 'Tarjeta de crédito', tarjetaId: idBcp});
+  // Historial de abonos para que las metas tengan ritmo proyectable
+  const histDe = (n, montoMensual) => { const r = []; for (let i = n; i >= 1; i--) r.push({fecha: mes(i) + '-27', monto: montoMensual}); return r; };
+  return {
+    config: {dark: false, empresa: false, ejemplo: true, metaAhorro: 20},
+    presupuestos: {Comida: 700, Salidas: 300, Transporte: 250, Suscripciones: 50},
+    ingresos, gastos,
+    tarjetas: [
+      {id: idBcp, ej: true, nombre: 'Visa Clásica', banco: 'BCP', linea: 5000, tcea: 84.9, cierre: 15, pago: 5,
+       pagos: [{id: uid(), fecha: mes(1) + '-05', monto: 600}, {id: uid(), fecha: mes(3) + '-05', monto: 300}]},
+      {id: idIbk, ej: true, nombre: 'Mastercard', banco: 'Interbank', linea: 3000, tcea: 69.5, cierre: 28, pago: 12, pagos: []}
+    ],
+    cobrar: [
+      {id: uid(), ej: true, persona: 'Diego', monto: 150, fecha: mes(0) + '-03', motivo: 'Préstamo para entradas', estado: 'Pendiente'},
+      {id: uid(), ej: true, persona: 'María', monto: 80, fecha: mes(1) + '-22', motivo: 'Cena compartida', estado: 'Pendiente'}
+    ],
+    metas: [
+      {id: uid(), ej: true, nombre: '🏠 Inicial depa', objetivo: 25000, actual: 6800, historial: histDe(10, 680)},
+      {id: uid(), ej: true, nombre: '✈️ TOEFL + beca', objetivo: 1800, actual: 950, historial: histDe(5, 190)},
+      {id: uid(), ej: true, nombre: '🛟 Fondo de emergencia', objetivo: 12000, actual: 3200, historial: histDe(8, 400)}
+    ],
+    empresa: [
+      {id: uid(), ej: true, tipo: 'ingreso', fecha: mes(0) + '-04', monto: 850, desc: 'Venta de servicio'},
+      {id: uid(), ej: true, tipo: 'egreso', fecha: mes(0) + '-06', monto: 320, desc: 'Insumos y publicidad'}
+    ]
+  };
+}
+
+// Migración: asegura que datos guardados con versiones anteriores tengan los campos nuevos
+function migrar() {
+  state.presupuestos = state.presupuestos || {};
+  if (state.config.metaAhorro == null) state.config.metaAhorro = 20;
+  (state.metas || []).forEach(m => {
+    if (!m.historial) m.historial = Number(m.actual) > 0 ? [{fecha: hoyISO(), monto: Number(m.actual)}] : [];
+  });
+}
+function cargar() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) { state = JSON.parse(raw); migrar(); return; }
+  } catch (e) { console.warn('Datos corruptos, se reinicia', e); }
+  state = datosEjemplo();   // primera vez: precarga ejemplos
+  guardar();
+}
+
+// ---------- Cálculos ----------
+function saldoTarjeta(t) {
+  const consumos = suma(state.gastos.filter(g => g.tarjetaId === t.id));
+  const pagos = suma(t.pagos || []);
+  return Math.max(0, consumos - pagos);
+}
+function totalDeudaTarjetas() { return state.tarjetas.reduce((a, t) => a + saldoTarjeta(t), 0); }
+function totalPorCobrar() { return suma(state.cobrar.filter(c => c.estado === 'Pendiente')); }
+
+function proximoPago(dia) {
+  const h = new Date(); h.setHours(0, 0, 0, 0);
+  let d = new Date(h.getFullYear(), h.getMonth(), dia);
+  if (d < h) d = new Date(h.getFullYear(), h.getMonth() + 1, dia);
+  return d;
+}
+function diasHasta(d) {
+  const h = new Date(); h.setHours(0, 0, 0, 0);
+  return Math.round((d - h) / 86400000);
+}
+const fmtFechaJS = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+
+// ---------- Navegación ----------
+const TABS = [
+  {id: 'dashboard', icono: '🏠', nombre: 'Inicio'},
+  {id: 'analitica', icono: '📊', nombre: 'Analítica'},
+  {id: 'ingresos',  icono: '📈', nombre: 'Ingresos'},
+  {id: 'gastos',    icono: '📉', nombre: 'Gastos'},
+  {id: 'tarjetas',  icono: '💳', nombre: 'Tarjetas'},
+  {id: 'cobrar',    icono: '🤝', nombre: 'Me deben'},
+  {id: 'metas',     icono: '🎯', nombre: 'Metas'},
+  {id: 'empresa',   icono: '🏢', nombre: 'Negocio', soloEmpresa: true},
+  {id: 'ajustes',   icono: '⚙️', nombre: 'Ajustes'}
+];
+
+function renderNav() {
+  const visibles = TABS.filter(t => !t.soloEmpresa || state.config.empresa);
+  $('#nav-desktop').innerHTML = visibles.map(t => `
+    <button onclick="mostrarTab('${t.id}')" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
+      ${tabActiva === t.id ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}">
+      <span class="text-lg">${t.icono}</span> ${t.nombre}
+    </button>`).join('');
+  $('#nav-mobile').innerHTML = visibles.map(t => `
+    <button onclick="mostrarTab('${t.id}')" class="flex flex-col items-center gap-0.5 min-w-[64px] flex-1 py-1.5 rounded-xl text-[10px] font-semibold
+      ${tabActiva === t.id ? 'text-brand-600 dark:text-brand-400 bg-brand-500/10' : 'text-slate-500 dark:text-slate-400'}">
+      <span class="text-lg leading-none">${t.icono}</span>${t.nombre}
+    </button>`).join('');
+}
+
+function mostrarTab(id) {
+  tabActiva = id;
+  document.querySelectorAll('.seccion').forEach(s => s.classList.add('hidden'));
+  $('#sec-' + id).classList.remove('hidden');
+  $('#sec-' + id).classList.add('fade-in');
+  renderNav();
+  if (id === 'dashboard') renderDashboard();
+  if (id === 'analitica') renderAnalitica(); // re-crear charts cuando la sección es visible
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// ---------- Modo oscuro ----------
+function aplicarTema() {
+  document.documentElement.classList.toggle('dark', !!state.config.dark);
+  const icono = state.config.dark ? '☀️' : '🌙';
+  $('#dark-icon').textContent = icono;
+  $('#btn-dark-m').textContent = icono;
+  $('#dark-label').textContent = state.config.dark ? 'Modo claro' : 'Modo oscuro';
+}
+function toggleDark() { state.config.dark = !state.config.dark; guardar(); aplicarTema(); renderDashboard(); renderAnalitica(); }
+$('#btn-dark').addEventListener('click', toggleDark);
+$('#btn-dark-m').addEventListener('click', toggleDark);
+
+// ---------- Dashboard ----------
+function renderDashboard() {
+  const mes = mesActual();
+  const ingMes = suma(delMes(state.ingresos, mes));
+  const gasMes = suma(delMes(state.gastos, mes));
+  const saldo = ingMes - gasMes;
+
+  const hoy = new Date();
+  $('#d-fecha-hoy').textContent = hoy.toLocaleDateString('es-PE', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+
+  $('#d-saldo').textContent = fmt(saldo);
+  $('#d-saldo').className = 'text-xl font-extrabold mt-1 ' + (saldo >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-danger-500');
+  $('#d-ingresos').textContent = fmt(ingMes);
+  $('#d-gastos').textContent = fmt(gasMes);
+  $('#d-deuda').textContent = fmt(totalDeudaTarjetas());
+  $('#d-cobrar').textContent = fmt(totalPorCobrar());
+
+  // Salud financiera: verde si ahorras ≥5% de tus ingresos, ámbar si empatas, rojo si gastas de más
+  let salud;
+  if (ingMes === 0 && gasMes === 0) {
+    salud = {bg: 'from-slate-500 to-slate-600', emoji: '📝', titulo: 'Aún sin movimientos este mes', msg: 'Registra tus ingresos y gastos para ver tu salud financiera.'};
+  } else if (saldo >= ingMes * 0.05 && saldo > 0) {
+    salud = {bg: 'from-brand-500 to-ocean-500', emoji: '🟢', titulo: '¡Vas muy bien! Estás ahorrando', msg: `Este mes te queda ${fmt(saldo)} a favor. ¡Sigue así y abónalo a una meta! 🎯`};
+  } else if (saldo >= 0) {
+    salud = {bg: 'from-amberx-500 to-orange-500', emoji: '🟡', titulo: 'Vas justo: casi empatas', msg: `Ingresos y gastos casi iguales (te quedan ${fmt(saldo)}). Revisa tus gastos hormiga 🐜.`};
+  } else {
+    salud = {bg: 'from-danger-500 to-orange-600', emoji: '🔴', titulo: 'Cuidado: gastaste más de lo que ganaste', msg: `Este mes estás ${fmt(Math.abs(saldo))} en negativo. Revisa la dona de gastos para ver dónde recortar.`};
+  }
+  $('#d-salud').className = `rounded-2xl p-5 mb-5 text-white shadow-card fade-in bg-gradient-to-r ${salud.bg}`;
+  $('#d-salud').innerHTML = `
+    <div class="flex items-start gap-3">
+      <span class="text-3xl">${salud.emoji}</span>
+      <div><p class="font-extrabold text-lg leading-tight">${salud.titulo}</p>
+      <p class="text-sm opacity-90 mt-1">${salud.msg}</p></div>
+    </div>`;
+
+  // Alerta: proyección del gasto del mes según el ritmo de los días transcurridos
+  const al = $('#d-alerta');
+  const diasDelMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const proy = hoy.getDate() >= 3 && gasMes > 0 ? (gasMes / hoy.getDate()) * diasDelMes : null;
+  if (proy && ingMes > 0 && proy > ingMes) {
+    al.classList.remove('hidden');
+    al.innerHTML = `🚨 <b>Ritmo de gasto alto:</b> llevas ${fmt(gasMes)} en ${hoy.getDate()} días. A este ritmo cerrarías el mes con <b>${fmt(proy)}</b>, superando tus ingresos del mes (${fmt(ingMes)}). Revisa la pestaña 📊 Analítica.`;
+  } else al.classList.add('hidden');
+
+  renderGraficos();
+}
+
+function renderGraficos() {
+  const oscuro = !!state.config.dark;
+  const colorTexto = oscuro ? '#cbd5e1' : '#475569';
+  const colorGrid = oscuro ? '#33415555' : '#e2e8f0';
+
+  // --- Dona: gastos del mes por categoría ---
+  const gastosMes = delMes(state.gastos, mesActual());
+  const porCat = {};
+  gastosMes.forEach(g => porCat[g.cat] = (porCat[g.cat] || 0) + Number(g.monto));
+  const labels = Object.keys(porCat), data = Object.values(porCat);
+  $('#dona-vacio').classList.toggle('hidden', labels.length > 0);
+
+  if (chDona) chDona.destroy();
+  chDona = new Chart($('#chartDona'), {
+    type: 'doughnut',
+    data: {labels, datasets: [{data, backgroundColor: PALETA, borderWidth: 0, hoverOffset: 8}]},
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: {position: 'bottom', labels: {color: colorTexto, boxWidth: 12, padding: 12, font: {size: 11}}},
+        tooltip: {callbacks: {label: c => ` ${c.label}: ${fmt(c.parsed)}`}}
+      }
+    }
+  });
+
+  // --- Barras: ingresos vs gastos últimos 6 meses ---
+  const meses = [];
+  const h = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(h.getFullYear(), h.getMonth() - i, 1);
+    meses.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  const dIng = meses.map(m => suma(delMes(state.ingresos, m)));
+  const dGas = meses.map(m => suma(delMes(state.gastos, m)));
+
+  if (chBarras) chBarras.destroy();
+  chBarras = new Chart($('#chartBarras'), {
+    type: 'bar',
+    data: {
+      labels: meses.map(etiquetaMes),
+      datasets: [
+        {label: 'Ingresos', data: dIng, backgroundColor: '#22a570', borderRadius: 6, maxBarThickness: 28},
+        {label: 'Gastos', data: dGas, backgroundColor: '#ef4444', borderRadius: 6, maxBarThickness: 28}
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {position: 'bottom', labels: {color: colorTexto, boxWidth: 12, font: {size: 11}}},
+        tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}
+      },
+      scales: {
+        x: {ticks: {color: colorTexto}, grid: {display: false}},
+        y: {ticks: {color: colorTexto, callback: v => 'S/ ' + v.toLocaleString('es-PE')}, grid: {color: colorGrid}}
+      }
+    }
+  });
+}
+
+// =================================================================
+// 2) INGRESOS
+// =================================================================
+function abrirIngreso(id) {
+  const x = id ? state.ingresos.find(i => i.id === id) : null;
+  $('#titulo-ingreso').textContent = x ? 'Editar ingreso' : 'Nuevo ingreso';
+  $('#ing-id').value = x ? x.id : '';
+  $('#ing-fecha').value = x ? x.fecha : hoyISO();
+  $('#ing-monto').value = x ? x.monto : '';
+  $('#ing-cat').innerHTML = CATS_INGRESO.map(c => `<option ${x && x.cat === c ? 'selected' : ''}>${c}</option>`).join('');
+  $('#ing-desc').value = x ? x.desc : '';
+  abrirModal('modal-ingreso');
+}
+$('#form-ingreso').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = $('#ing-id').value;
+  const datos = {fecha: $('#ing-fecha').value, monto: Number($('#ing-monto').value), cat: $('#ing-cat').value, desc: $('#ing-desc').value.trim()};
+  if (id) Object.assign(state.ingresos.find(i => i.id === id), datos);
+  else state.ingresos.push({id: uid(), ...datos});
+  guardar(); cerrarModal('modal-ingreso'); renderTodo();
+  toast(id ? 'Ingreso actualizado ✅' : 'Ingreso registrado 🎉');
+});
+function eliminarIngreso(id) {
+  if (!confirm('¿Eliminar este ingreso?')) return;
+  state.ingresos = state.ingresos.filter(i => i.id !== id);
+  guardar(); renderTodo(); toast('Ingreso eliminado', 'info');
+}
+function renderIngresos() {
+  const mes = $('#f-ing-mes').value;
+  const lista = ordenarFecha(delMes(state.ingresos, mes));
+  $('#ing-total-filtro').textContent = lista.length ? 'Total: ' + fmt(suma(lista)) : '';
+  $('#lista-ingresos').innerHTML = lista.length ? lista.map(i => `
+    <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:shadow-card">
+      <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/40 flex items-center justify-center text-lg shrink-0">${ICONO_ING[i.cat] || '✨'}</div>
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold text-sm truncate">${esc(i.desc) || i.cat}</p>
+        <p class="text-xs text-slate-400">${i.cat} · ${fmtFecha(i.fecha)}</p>
+      </div>
+      <p class="font-extrabold text-brand-600 dark:text-brand-400 whitespace-nowrap">+ ${fmt(i.monto)}</p>
+      <div class="flex gap-1">
+        <button onclick="abrirIngreso('${i.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm" title="Editar">✏️</button>
+        <button onclick="eliminarIngreso('${i.id}')" class="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-600/20 text-sm" title="Eliminar">🗑️</button>
+      </div>
+    </div>`).join('')
+    : `<p class="text-center text-sm text-slate-400 py-10">No hay ingresos ${mes ? 'en este mes' : 'registrados'}. ¡Agrega el primero! 🚀</p>`;
+}
+
+// =================================================================
+// 3) GASTOS
+// =================================================================
+function toggleSelectTarjeta() {
+  const esTC = $('#gas-metodo').value === 'Tarjeta de crédito';
+  $('#gas-tarjeta-wrap').classList.toggle('hidden', !esTC);
+  if (esTC) {
+    if (!state.tarjetas.length) {
+      toast('Primero registra una tarjeta en la pestaña 💳 Tarjetas', 'error');
+      $('#gas-metodo').value = 'Efectivo';
+      $('#gas-tarjeta-wrap').classList.add('hidden');
+      return;
+    }
+    $('#gas-tarjeta').innerHTML = state.tarjetas.map(t => `<option value="${t.id}">${esc(t.nombre)} · ${esc(t.banco)}</option>`).join('');
+  }
+}
+function abrirGasto(id) {
+  const x = id ? state.gastos.find(g => g.id === id) : null;
+  $('#titulo-gasto').textContent = x ? 'Editar gasto' : 'Nuevo gasto';
+  $('#gas-id').value = x ? x.id : '';
+  $('#gas-fecha').value = x ? x.fecha : hoyISO();
+  $('#gas-monto').value = x ? x.monto : '';
+  $('#gas-cat').innerHTML = CATS_GASTO.map(c => `<option ${x && x.cat === c ? 'selected' : ''}>${c}</option>`).join('');
+  $('#gas-metodo').value = x ? x.metodo : 'Efectivo';
+  $('#gas-desc').value = x ? x.desc : '';
+  toggleSelectTarjeta();
+  if (x && x.tarjetaId) $('#gas-tarjeta').value = x.tarjetaId;
+  abrirModal('modal-gasto');
+}
+$('#form-gasto').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = $('#gas-id').value;
+  const esTC = $('#gas-metodo').value === 'Tarjeta de crédito';
+  const datos = {
+    fecha: $('#gas-fecha').value, monto: Number($('#gas-monto').value),
+    cat: $('#gas-cat').value, desc: $('#gas-desc').value.trim(),
+    metodo: $('#gas-metodo').value, tarjetaId: esTC ? $('#gas-tarjeta').value : null
+  };
+  if (id) Object.assign(state.gastos.find(g => g.id === id), datos);
+  else state.gastos.push({id: uid(), ...datos});
+  guardar(); cerrarModal('modal-gasto'); renderTodo();
+  toast(id ? 'Gasto actualizado ✅' : (esTC ? 'Gasto registrado y sumado a tu tarjeta 💳' : 'Gasto registrado ✅'));
+});
+function eliminarGasto(id) {
+  if (!confirm('¿Eliminar este gasto? Si fue con tarjeta, también se restará de su deuda.')) return;
+  state.gastos = state.gastos.filter(g => g.id !== id);
+  guardar(); renderTodo(); toast('Gasto eliminado', 'info');
+}
+function renderGastos() {
+  // Poblar el filtro de categorías una sola vez
+  const sel = $('#f-gas-cat');
+  if (sel.options.length === 1) sel.innerHTML += CATS_GASTO.map(c => `<option>${c}</option>`).join('');
+  const mes = $('#f-gas-mes').value, cat = sel.value;
+  let lista = ordenarFecha(delMes(state.gastos, mes));
+  if (cat) lista = lista.filter(g => g.cat === cat);
+  $('#gas-total-filtro').textContent = lista.length ? 'Total: ' + fmt(suma(lista)) : '';
+  $('#lista-gastos').innerHTML = lista.length ? lista.map(g => {
+    const t = g.tarjetaId ? state.tarjetas.find(x => x.id === g.tarjetaId) : null;
+    return `
+    <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:shadow-card">
+      <div class="w-10 h-10 rounded-xl bg-danger-50 dark:bg-danger-600/20 flex items-center justify-center text-lg shrink-0">${ICONO_GASTO[g.cat] || '📦'}</div>
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold text-sm truncate">${esc(g.desc) || g.cat}</p>
+        <p class="text-xs text-slate-400">${g.cat} · ${fmtFecha(g.fecha)} · ${g.metodo}${t ? ' (' + esc(t.nombre) + ')' : ''}</p>
+      </div>
+      <p class="font-extrabold text-danger-500 whitespace-nowrap">− ${fmt(g.monto)}</p>
+      <div class="flex gap-1">
+        <button onclick="abrirGasto('${g.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm" title="Editar">✏️</button>
+        <button onclick="eliminarGasto('${g.id}')" class="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-600/20 text-sm" title="Eliminar">🗑️</button>
+      </div>
+    </div>`;
+  }).join('')
+  : `<p class="text-center text-sm text-slate-400 py-10">Sin gastos con estos filtros 🎉</p>`;
+}
+
+// =================================================================
+// 4) TARJETAS / DEUDAS
+// =================================================================
+function abrirTarjeta(id) {
+  const x = id ? state.tarjetas.find(t => t.id === id) : null;
+  $('#titulo-tarjeta').textContent = x ? 'Editar tarjeta' : 'Nueva tarjeta';
+  $('#tar-id').value = x ? x.id : '';
+  $('#tar-nombre').value = x ? x.nombre : '';
+  $('#tar-banco').value = x ? x.banco : '';
+  $('#tar-linea').value = x ? x.linea : '';
+  $('#tar-tcea').value = x ? x.tcea : '';
+  $('#tar-cierre').value = x ? x.cierre : '';
+  $('#tar-pago').value = x ? x.pago : '';
+  abrirModal('modal-tarjeta');
+}
+$('#form-tarjeta').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = $('#tar-id').value;
+  const datos = {
+    nombre: $('#tar-nombre').value.trim(), banco: $('#tar-banco').value.trim(),
+    linea: Number($('#tar-linea').value), tcea: Number($('#tar-tcea').value) || 0,
+    cierre: Number($('#tar-cierre').value), pago: Number($('#tar-pago').value)
+  };
+  if (id) Object.assign(state.tarjetas.find(t => t.id === id), datos);
+  else state.tarjetas.push({id: uid(), pagos: [], ...datos});
+  guardar(); cerrarModal('modal-tarjeta'); renderTodo();
+  toast(id ? 'Tarjeta actualizada ✅' : 'Tarjeta registrada 💳');
+});
+function eliminarTarjeta(id) {
+  if (!confirm('¿Eliminar esta tarjeta? Sus gastos asociados quedarán sin tarjeta (no se borran).')) return;
+  state.gastos.forEach(g => { if (g.tarjetaId === id) { g.tarjetaId = null; g.metodo = 'Débito'; } });
+  state.tarjetas = state.tarjetas.filter(t => t.id !== id);
+  guardar(); renderTodo(); toast('Tarjeta eliminada', 'info');
+}
+function abrirPago(id) {
+  const t = state.tarjetas.find(x => x.id === id);
+  $('#pago-tarjeta-id').value = id;
+  $('#pago-tarjeta-nombre').textContent = `${t.nombre} · ${t.banco} — deuda actual: ${fmt(saldoTarjeta(t))}`;
+  $('#pago-fecha').value = hoyISO();
+  $('#pago-monto').value = '';
+  abrirModal('modal-pago');
+}
+$('#form-pago').addEventListener('submit', e => {
+  e.preventDefault();
+  const t = state.tarjetas.find(x => x.id === $('#pago-tarjeta-id').value);
+  t.pagos = t.pagos || [];
+  t.pagos.push({id: uid(), fecha: $('#pago-fecha').value, monto: Number($('#pago-monto').value)});
+  guardar(); cerrarModal('modal-pago'); renderTodo();
+  toast('Pago registrado, ¡tu deuda bajó! 🙌');
+});
+function renderTarjetas() {
+  $('#lista-tarjetas').innerHTML = state.tarjetas.length ? state.tarjetas.map(t => {
+    const saldo = saldoTarjeta(t);
+    const pct = t.linea > 0 ? Math.min(100, (saldo / t.linea) * 100) : 0;
+    const fPago = proximoPago(t.pago);
+    const dias = diasHasta(fPago);
+    const usoAlto = pct > 30;
+    const pagoCerca = dias <= 5 && saldo > 0;
+    const colorBarra = pct > 60 ? 'bg-danger-500' : pct > 30 ? 'bg-amberx-500' : 'bg-brand-500';
+    return `
+    <div class="rounded-2xl bg-white dark:bg-slate-900 border ${usoAlto || pagoCerca ? 'border-orange-400/60' : 'border-slate-200 dark:border-slate-800'} p-5 shadow-soft space-y-3">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-8 rounded-md bg-gradient-to-br from-slate-700 to-slate-900 dark:from-ocean-600 dark:to-slate-800 flex items-center justify-center text-white text-xs font-bold shadow">💳</div>
+          <div>
+            <p class="font-bold leading-tight">${esc(t.nombre)}</p>
+            <p class="text-xs text-slate-400">${esc(t.banco)} · TCEA ${t.tcea}%</p>
+          </div>
+        </div>
+        <div class="flex gap-1">
+          <button onclick="abrirTarjeta('${t.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm" title="Editar">✏️</button>
+          <button onclick="eliminarTarjeta('${t.id}')" class="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-600/20 text-sm" title="Eliminar">🗑️</button>
+        </div>
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1">
+          <span class="text-slate-500 dark:text-slate-400">Deuda actual</span>
+          <span class="font-extrabold ${saldo > 0 ? 'text-orange-500' : 'text-brand-600 dark:text-brand-400'}">${fmt(saldo)}</span>
+        </div>
+        <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+          <div class="barra h-full rounded-full ${colorBarra}" style="width:${pct.toFixed(1)}%"></div>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">${pct.toFixed(1)}% de tu línea de ${fmt(t.linea)} · cierre día ${t.cierre}</p>
+      </div>
+      ${usoAlto ? `<p class="text-xs rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-3 py-2">⚠️ Estás usando más del 30% de tu línea: esto puede afectar tu score crediticio.</p>` : ''}
+      ${pagoCerca ? `<p class="text-xs rounded-lg bg-danger-100 dark:bg-danger-600/20 text-danger-600 dark:text-danger-400 px-3 py-2 font-semibold">🔔 ¡Tu pago vence ${dias === 0 ? 'HOY' : 'en ' + dias + ' día' + (dias === 1 ? '' : 's')}! Evita intereses y moras.</p>` : ''}
+      <div class="flex items-center justify-between pt-1">
+        <p class="text-xs text-slate-500 dark:text-slate-400">📅 Próximo pago: <b>${fmtFechaJS(fPago)}</b></p>
+        <button onclick="abrirPago('${t.id}')" class="px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold shadow-sm">💵 Pagar</button>
+      </div>
+    </div>`;
+  }).join('')
+  : `<p class="text-center text-sm text-slate-400 py-10 md:col-span-2">No tienes tarjetas registradas. Agrega una para controlar tu deuda 💳</p>`;
+}
+
+// =================================================================
+// 5) ME DEBEN (cuentas por cobrar)
+// =================================================================
+function abrirCobrar(id) {
+  const x = id ? state.cobrar.find(c => c.id === id) : null;
+  $('#titulo-cobrar').textContent = x ? 'Editar cuenta por cobrar' : 'Nueva cuenta por cobrar';
+  $('#cob-id').value = x ? x.id : '';
+  $('#cob-persona').value = x ? x.persona : '';
+  $('#cob-monto').value = x ? x.monto : '';
+  $('#cob-fecha').value = x ? x.fecha : hoyISO();
+  $('#cob-motivo').value = x ? x.motivo : '';
+  abrirModal('modal-cobrar');
+}
+$('#form-cobrar').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = $('#cob-id').value;
+  const datos = {persona: $('#cob-persona').value.trim(), monto: Number($('#cob-monto').value), fecha: $('#cob-fecha').value, motivo: $('#cob-motivo').value.trim()};
+  if (id) Object.assign(state.cobrar.find(c => c.id === id), datos);
+  else state.cobrar.push({id: uid(), estado: 'Pendiente', ...datos});
+  guardar(); cerrarModal('modal-cobrar'); renderTodo();
+  toast(id ? 'Actualizado ✅' : 'Deuda registrada 🤝');
+});
+function marcarPagado(id) {
+  const c = state.cobrar.find(x => x.id === id);
+  if (!confirm(`¿${c.persona} ya te pagó ${fmt(c.monto)}? Se registrará como ingreso de hoy.`)) return;
+  c.estado = 'Pagado';
+  c.fechaPago = hoyISO();
+  state.ingresos.push({id: uid(), fecha: hoyISO(), monto: c.monto, cat: 'Otros', desc: `Cobro a ${c.persona}${c.motivo ? ' — ' + c.motivo : ''}`});
+  guardar(); renderTodo();
+  toast(`¡${c.persona} te pagó! Registrado como ingreso 🎉`);
+}
+function eliminarCobrar(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  state.cobrar = state.cobrar.filter(c => c.id !== id);
+  guardar(); renderTodo(); toast('Registro eliminado', 'info');
+}
+function renderCobrar() {
+  $('#total-cobrar').textContent = fmt(totalPorCobrar());
+  const lista = state.cobrar.slice().sort((a, b) => (a.estado === b.estado ? (b.fecha || '').localeCompare(a.fecha || '') : a.estado === 'Pendiente' ? -1 : 1));
+  $('#lista-cobrar').innerHTML = lista.length ? lista.map(c => `
+    <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft ${c.estado === 'Pagado' ? 'opacity-60' : ''}">
+      <div class="w-10 h-10 rounded-full bg-ocean-50 dark:bg-ocean-600/20 flex items-center justify-center font-extrabold text-ocean-500 shrink-0">${esc((c.persona || '?')[0].toUpperCase())}</div>
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold text-sm truncate">${esc(c.persona)} ${c.estado === 'Pagado' ? '<span class="text-xs font-bold text-brand-500">✓ PAGADO</span>' : ''}</p>
+        <p class="text-xs text-slate-400 truncate">${esc(c.motivo) || 'Sin motivo'} · ${fmtFecha(c.fecha)}</p>
+      </div>
+      <p class="font-extrabold ${c.estado === 'Pagado' ? 'text-slate-400 line-through' : 'text-ocean-500'} whitespace-nowrap">${fmt(c.monto)}</p>
+      <div class="flex gap-1">
+        ${c.estado === 'Pendiente' ? `<button onclick="marcarPagado('${c.id}')" class="px-2.5 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold whitespace-nowrap">✓ Me pagó</button>
+        <button onclick="abrirCobrar('${c.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm" title="Editar">✏️</button>` : ''}
+        <button onclick="eliminarCobrar('${c.id}')" class="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-600/20 text-sm" title="Eliminar">🗑️</button>
+      </div>
+    </div>`).join('')
+  : `<p class="text-center text-sm text-slate-400 py-10">Nadie te debe... por ahora 😄</p>`;
+}
+
+// =================================================================
+// 6) METAS DE AHORRO
+// =================================================================
+function abrirMeta(id) {
+  const x = id ? state.metas.find(m => m.id === id) : null;
+  $('#titulo-meta').textContent = x ? 'Editar meta' : 'Nueva meta de ahorro';
+  $('#met-id').value = x ? x.id : '';
+  $('#met-nombre').value = x ? x.nombre : '';
+  $('#met-objetivo').value = x ? x.objetivo : '';
+  $('#met-actual').value = x ? x.actual : 0;
+  abrirModal('modal-meta');
+}
+$('#form-meta').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = $('#met-id').value;
+  const datos = {nombre: $('#met-nombre').value.trim(), objetivo: Number($('#met-objetivo').value), actual: Number($('#met-actual').value) || 0};
+  if (id) {
+    const m = state.metas.find(x => x.id === id);
+    const delta = datos.actual - Number(m.actual);
+    Object.assign(m, datos);
+    // Registrar el ajuste manual en el historial para mantener la proyección coherente
+    if (delta !== 0) (m.historial = m.historial || []).push({fecha: hoyISO(), monto: delta});
+  } else {
+    state.metas.push({id: uid(), historial: datos.actual > 0 ? [{fecha: hoyISO(), monto: datos.actual}] : [], ...datos});
+  }
+  guardar(); cerrarModal('modal-meta'); renderTodo();
+  toast(id ? 'Meta actualizada ✅' : '¡Nueva meta creada! A por ella 🎯');
+});
+function abrirAbono(id) {
+  const m = state.metas.find(x => x.id === id);
+  $('#abo-meta-id').value = id;
+  $('#abono-meta-nombre').textContent = `${m.nombre} — te faltan ${fmt(Math.max(0, m.objetivo - m.actual))}`;
+  $('#abo-monto').value = '';
+  abrirModal('modal-abono');
+}
+$('#form-abono').addEventListener('submit', e => {
+  e.preventDefault();
+  const m = state.metas.find(x => x.id === $('#abo-meta-id').value);
+  const abono = Number($('#abo-monto').value);
+  m.actual = Number(m.actual) + abono;
+  (m.historial = m.historial || []).push({fecha: hoyISO(), monto: abono}); // alimenta la proyección
+  guardar(); cerrarModal('modal-abono'); renderTodo();
+  toast(m.actual >= m.objetivo ? '🏆 ¡¡META CUMPLIDA!! Eres increíble' : 'Abono registrado, ¡cada sol cuenta! 🪙');
+});
+function eliminarMeta(id) {
+  if (!confirm('¿Eliminar esta meta?')) return;
+  state.metas = state.metas.filter(m => m.id !== id);
+  guardar(); renderTodo(); toast('Meta eliminada', 'info');
+}
+function renderMetas() {
+  $('#lista-metas').innerHTML = state.metas.length ? state.metas.map(m => {
+    const pct = m.objetivo > 0 ? Math.min(100, (m.actual / m.objetivo) * 100) : 0;
+    const falta = Math.max(0, m.objetivo - m.actual);
+    const lograda = pct >= 100;
+    return `
+    <div class="rounded-2xl bg-white dark:bg-slate-900 border ${lograda ? 'border-brand-400/60' : 'border-slate-200 dark:border-slate-800'} p-5 shadow-soft space-y-3">
+      <div class="flex items-start justify-between gap-2">
+        <p class="font-bold">${esc(m.nombre)} ${lograda ? '🏆' : ''}</p>
+        <div class="flex gap-1 shrink-0">
+          <button onclick="abrirMeta('${m.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm" title="Editar">✏️</button>
+          <button onclick="eliminarMeta('${m.id}')" class="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-600/20 text-sm" title="Eliminar">🗑️</button>
+        </div>
+      </div>
+      <div>
+        <div class="flex justify-between text-sm mb-1">
+          <span class="font-extrabold text-brand-600 dark:text-brand-400">${fmt(m.actual)}</span>
+          <span class="text-slate-400">de ${fmt(m.objetivo)}</span>
+        </div>
+        <div class="h-3 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+          <div class="barra h-full rounded-full bg-gradient-to-r from-brand-500 to-ocean-500" style="width:${pct.toFixed(1)}%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-400 mt-1">
+          <span>${pct.toFixed(0)}% logrado</span>
+          <span>${lograda ? '¡Cumplida! 🎉' : 'Faltan ' + fmt(falta)}</span>
+        </div>
+      </div>
+      ${!lograda ? `<button onclick="abrirAbono('${m.id}')" class="w-full px-3 py-2 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 dark:text-brand-400 text-sm font-bold">🪙 Abonar a esta meta</button>` : ''}
+    </div>`;
+  }).join('')
+  : `<p class="text-center text-sm text-slate-400 py-10 md:col-span-2">Sin metas aún. Crea una: ¿inicial de depa? ¿viaje? ¿maestría? 🎯</p>`;
+}
+
+// =================================================================
+// 7) MODO EMPRESA
+// =================================================================
+function toggleEmpresa() {
+  state.config.empresa = !state.config.empresa;
+  guardar(); aplicarToggleEmpresa(); renderNav();
+  if (!state.config.empresa && tabActiva === 'empresa') mostrarTab('dashboard');
+  toast(state.config.empresa ? 'Modo empresa activado 🏢' : 'Modo empresa desactivado', 'info');
+}
+function aplicarToggleEmpresa() {
+  const on = !!state.config.empresa;
+  $('#toggle-empresa').classList.toggle('bg-brand-500', on);
+  $('#toggle-empresa').classList.toggle('bg-slate-300', !on);
+  $('#toggle-empresa-dot').style.transform = on ? 'translateX(20px)' : '';
+}
+function abrirEmpresa(id) {
+  const x = id ? state.empresa.find(m => m.id === id) : null;
+  $('#titulo-empresa').textContent = x ? 'Editar movimiento' : 'Nuevo movimiento del negocio';
+  $('#emp-id').value = x ? x.id : '';
+  $('#emp-tipo').value = x ? x.tipo : 'ingreso';
+  $('#emp-fecha').value = x ? x.fecha : hoyISO();
+  $('#emp-monto').value = x ? x.monto : '';
+  $('#emp-desc').value = x ? x.desc : '';
+  abrirModal('modal-empresa');
+}
+$('#form-empresa').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = $('#emp-id').value;
+  const datos = {tipo: $('#emp-tipo').value, fecha: $('#emp-fecha').value, monto: Number($('#emp-monto').value), desc: $('#emp-desc').value.trim()};
+  if (id) Object.assign(state.empresa.find(m => m.id === id), datos);
+  else state.empresa.push({id: uid(), ...datos});
+  guardar(); cerrarModal('modal-empresa'); renderEmpresa();
+  toast('Movimiento guardado 🏢');
+});
+function eliminarEmpresa(id) {
+  if (!confirm('¿Eliminar este movimiento?')) return;
+  state.empresa = state.empresa.filter(m => m.id !== id);
+  guardar(); renderEmpresa(); toast('Movimiento eliminado', 'info');
+}
+function renderEmpresa() {
+  const ventasMes = suma(delMes(state.empresa.filter(m => m.tipo === 'ingreso'), mesActual()));
+  const costosMes = suma(delMes(state.empresa.filter(m => m.tipo === 'egreso'), mesActual()));
+  const util = ventasMes - costosMes;
+  $('#emp-ventas').textContent = fmt(ventasMes);
+  $('#emp-costos').textContent = fmt(costosMes);
+  $('#emp-utilidad').textContent = fmt(util);
+  $('#emp-utilidad').className = 'text-lg font-extrabold mt-1 ' + (util >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-danger-500');
+
+  const mes = $('#f-emp-mes').value;
+  const lista = ordenarFecha(delMes(state.empresa, mes));
+  $('#lista-empresa').innerHTML = lista.length ? lista.map(m => `
+    <div class="flex items-center gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft">
+      <div class="w-10 h-10 rounded-xl ${m.tipo === 'ingreso' ? 'bg-brand-50 dark:bg-brand-900/40' : 'bg-danger-50 dark:bg-danger-600/20'} flex items-center justify-center text-lg shrink-0">${m.tipo === 'ingreso' ? '🛒' : '📦'}</div>
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold text-sm truncate">${esc(m.desc) || (m.tipo === 'ingreso' ? 'Venta' : 'Costo')}</p>
+        <p class="text-xs text-slate-400">${fmtFecha(m.fecha)}</p>
+      </div>
+      <p class="font-extrabold whitespace-nowrap ${m.tipo === 'ingreso' ? 'text-brand-600 dark:text-brand-400' : 'text-danger-500'}">${m.tipo === 'ingreso' ? '+' : '−'} ${fmt(m.monto)}</p>
+      <div class="flex gap-1">
+        <button onclick="abrirEmpresa('${m.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm" title="Editar">✏️</button>
+        <button onclick="eliminarEmpresa('${m.id}')" class="p-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-600/20 text-sm" title="Eliminar">🗑️</button>
+      </div>
+    </div>`).join('')
+  : `<p class="text-center text-sm text-slate-400 py-10">Sin movimientos del negocio ${mes ? 'en este mes' : ''} 📋</p>`;
+}
+
+// =================================================================
+// EXPORTAR / IMPORTAR / BORRAR / EJEMPLOS
+// =================================================================
+function exportarDatos() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `misfinanzas-respaldo-${hoyISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Respaldo descargado 💾');
+}
+function importarDatos(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const datos = JSON.parse(e.target.result);
+      if (!datos.ingresos || !datos.gastos || !datos.config) throw new Error('Formato inválido');
+      if (!confirm('Esto reemplazará TODOS tus datos actuales por los del archivo. ¿Continuar?')) return;
+      state = datos;
+      migrar();
+      guardar(); aplicarTema(); aplicarToggleEmpresa(); renderTodo();
+      toast('Datos importados con éxito 🎉');
+    } catch (err) {
+      toast('El archivo no es un respaldo válido 😕', 'error');
+    }
+    ev.target.value = '';
+  };
+  reader.readAsText(file);
+}
+function borrarTodo() {
+  if (!confirm('⚠️ Vas a borrar TODOS tus datos (ingresos, gastos, tarjetas, metas...). ¿Estás seguro?')) return;
+  if (!confirm('Última confirmación: esta acción NO se puede deshacer. ¿Borrar todo?')) return;
+  const dark = state.config.dark, metaAhorro = state.config.metaAhorro || 20;
+  state = {config: {dark, empresa: false, ejemplo: false, metaAhorro}, presupuestos: {}, ingresos: [], gastos: [], tarjetas: [], cobrar: [], metas: [], empresa: []};
+  guardar(); aplicarToggleEmpresa(); renderTodo();
+  toast('Todo borrado. Empieza de cero 🌱', 'info');
+}
+function limpiarEjemplo() {
+  if (!confirm('¿Quitar los datos de ejemplo? Tus registros propios se conservan.')) return;
+  ['ingresos', 'gastos', 'tarjetas', 'cobrar', 'metas', 'empresa'].forEach(k => {
+    state[k] = state[k].filter(x => !x.ej);
+  });
+  state.config.ejemplo = false;
+  guardar(); renderTodo();
+  toast('Datos de ejemplo eliminados. ¡La app es toda tuya! ✨');
+}
+
+// =================================================================
+// 9) ANALÍTICA — KPIs, gráficos, insights, anomalías y presupuestos
+//    Todo se recalcula en cada renderTodo() (es decir, con cada cambio)
+// =================================================================
+let chartsA = {}; // instancias Chart.js de esta pestaña
+
+// --- Helpers de series mensuales ---
+function mesesAtras(n) { // últimos n meses incluyendo el actual, como 'YYYY-MM'
+  const r = [], h = new Date();
+  for (let i = n - 1; i >= 0; i--) { const d = new Date(h.getFullYear(), h.getMonth() - i, 1); r.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
+  return r;
+}
+const ingDeMes = m => suma(delMes(state.ingresos, m));
+const gasDeMes = m => suma(delMes(state.gastos, m));
+const tasaDeMes = m => { const i = ingDeMes(m); return i > 0 ? ((i - gasDeMes(m)) / i) * 100 : null; };
+const promedio = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+function mediaMovil(arr, k) { // media móvil de k periodos (ignora nulls)
+  return arr.map((_, i) => {
+    const v = arr.slice(Math.max(0, i - k + 1), i + 1).filter(x => x != null);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  });
+}
+
+function cambiarMetaAhorro(v) {
+  state.config.metaAhorro = Math.max(0, Math.min(100, Number(v) || 0));
+  guardar(); renderAnalitica();
+}
+
+// --- Tarjeta KPI con variación vs periodo anterior ---
+// malSiSube: true cuando subir es malo (gasto, burn rate) para colorear la flecha
+function kpi(titulo, valor, sub, delta, malSiSube = false, unidad = '%') {
+  let flecha = '';
+  if (delta != null && isFinite(delta)) {
+    if (Math.abs(delta) < 0.05) flecha = `<span class="text-xs font-bold text-slate-400">→ 0${unidad}</span>`;
+    else {
+      const sube = delta > 0, bueno = malSiSube ? !sube : sube;
+      flecha = `<span class="text-xs font-bold ${bueno ? 'text-brand-500' : 'text-danger-500'}">${sube ? '↑' : '↓'} ${Math.abs(delta).toFixed(1)}${unidad}</span>`;
+    }
+  }
+  return `<div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft hover:-translate-y-0.5 transition-transform">
+    <p class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">${titulo}</p>
+    <p class="text-xl font-extrabold mt-1 leading-tight">${valor}</p>
+    <div class="flex items-center justify-between mt-1 gap-1">${flecha}<span class="text-[10px] text-slate-400 truncate text-right">${sub || ''}</span></div>
+  </div>`;
+}
+
+// --- Proyección de meta por regresión lineal sobre el acumulado mensual ---
+function proyectarMeta(m) {
+  const hist = (m.historial || []).slice().sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  if (!hist.length) return null;
+  // Serie mensual acumulada desde el primer abono hasta el mes actual
+  const labels = [];
+  const first = hist[0].fecha.slice(0, 7);
+  let d = new Date(+first.slice(0, 4), +first.slice(5, 7) - 1, 1);
+  const nowKey = mesActual();
+  for (let i = 0; i < 60; i++) {
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    labels.push(k);
+    if (k === nowKey) break;
+    d.setMonth(d.getMonth() + 1);
+  }
+  let acc = 0;
+  const serie = labels.map(k => { acc += suma(hist.filter(x => (x.fecha || '').startsWith(k))); return Math.round(acc * 100) / 100; });
+  // Regresión lineal y = a·x + b (x = índice de mes)
+  const n = serie.length;
+  let a = null, b = null;
+  if (n >= 2) {
+    const xs = serie.map((_, i) => i);
+    const sx = xs.reduce((p, q) => p + q, 0), sy = serie.reduce((p, q) => p + q, 0);
+    const sxy = xs.reduce((p, x, i) => p + x * serie[i], 0), sxx = xs.reduce((p, x) => p + x * x, 0);
+    const den = n * sxx - sx * sx;
+    if (den !== 0) { a = (n * sxy - sx * sy) / den; b = (sy - a * sx) / n; }
+  }
+  // ¿En cuántos meses llego al objetivo?
+  let mesesFalta = null, fechaTxt = null;
+  if (a > 0 && serie[n - 1] < Number(m.objetivo)) {
+    const xObj = (Number(m.objetivo) - b) / a;
+    const falta = Math.ceil(xObj - (n - 1));
+    if (falta >= 1 && falta <= 120) {
+      mesesFalta = falta;
+      const f = new Date(); f.setMonth(f.getMonth() + falta);
+      fechaTxt = MESES_ABR[f.getMonth()].toLowerCase() + ' ' + f.getFullYear();
+    }
+  }
+  return {labels, serie, a, b, mesesFalta, fechaTxt};
+}
+
+function renderChartMeta() {
+  const sel = $('#sel-meta-proy');
+  const prev = sel.value;
+  sel.innerHTML = state.metas.map(m => `<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
+  if (prev && state.metas.some(m => m.id === prev)) sel.value = prev;
+  if (chartsA.meta) { chartsA.meta.destroy(); delete chartsA.meta; }
+  const info = $('#meta-proy-info');
+  const m = state.metas.find(x => x.id === sel.value);
+  if (!m) { info.textContent = 'Crea una meta de ahorro para ver su proyección 🎯'; return; }
+  const p = proyectarMeta(m);
+  if (!p) { info.textContent = 'Aún no hay abonos en esta meta: registra abonos para empezar a proyectar.'; return; }
+
+  const oscuro = !!state.config.dark;
+  const ct = oscuro ? '#cbd5e1' : '#475569';
+  const cg = oscuro ? '#33415555' : '#e2e8f0';
+  const n = p.serie.length;
+  const futuros = p.mesesFalta ? Math.min(36, p.mesesFalta) : 0;
+  const labels = p.labels.slice();
+  const hd = new Date();
+  for (let j = 1; j <= futuros; j++) { const f = new Date(hd.getFullYear(), hd.getMonth() + j, 1); labels.push(`${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}`); }
+  const real = p.serie.concat(Array(futuros).fill(null));
+  const proy = labels.map((_, i) => {
+    if (p.a == null || i < n - 1) return null;
+    if (i === n - 1) return p.serie[n - 1]; // ancla la proyección al último dato real
+    return Math.min(Number(m.objetivo), Math.round((p.a * i + p.b) * 100) / 100);
+  });
+
+  chartsA.meta = new Chart($('#chartMetaProy'), {
+    type: 'line',
+    data: {labels: labels.map(etiquetaMes), datasets: [
+      {label: 'Ahorro real', data: real, borderColor: '#22a570', backgroundColor: '#22a57033', fill: true, tension: .25, pointRadius: 3, spanGaps: false},
+      {label: 'Proyección (regresión lineal)', data: proy, borderColor: '#3b82f6', borderDash: [6, 4], pointRadius: 0, fill: false},
+      {label: 'Objetivo', data: labels.map(() => Number(m.objetivo)), borderColor: '#f59e0b', borderDash: [2, 3], pointRadius: 0, fill: false}
+    ]},
+    options: {responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {position: 'bottom', labels: {color: ct, boxWidth: 10, font: {size: 10}}},
+        tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
+      scales: {x: {ticks: {color: ct, font: {size: 9}, maxTicksLimit: 14}, grid: {display: false}},
+               y: {ticks: {color: ct, font: {size: 10}, callback: v => 'S/ ' + Number(v).toLocaleString('es-PE')}, grid: {color: cg}}}}
+  });
+
+  if (Number(m.actual) >= Number(m.objetivo)) info.innerHTML = '🏆 ¡Meta cumplida! Felicitaciones.';
+  else if (p.mesesFalta != null) info.innerHTML = `A tu ritmo actual (~${fmt(p.a)}/mes), alcanzarás <b>${fmt(m.objetivo)}</b> en <b>~${p.mesesFalta} mes${p.mesesFalta === 1 ? '' : 'es'}</b> (${p.fechaTxt}).`;
+  else info.innerHTML = 'Tu ritmo de abonos aún no permite proyectar una fecha: registra abonos periódicos.';
+}
+
+// --- Presupuestos por categoría ---
+function abrirPresupuestos() {
+  $('#ppto-campos').innerHTML = CATS_GASTO.map(c => `
+    <div class="flex items-center gap-2">
+      <label class="text-sm flex-1">${ICONO_GASTO[c]} ${c}</label>
+      <span class="text-xs text-slate-400">S/</span>
+      <input type="number" min="0" step="0.01" data-cat="${c}" value="${state.presupuestos[c] || ''}" placeholder="Sin límite"
+        class="ppto-input w-28 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 text-sm text-right">
+    </div>`).join('');
+  abrirModal('modal-presupuestos');
+}
+$('#form-presupuestos').addEventListener('submit', e => {
+  e.preventDefault();
+  document.querySelectorAll('.ppto-input').forEach(i => {
+    const v = Number(i.value);
+    if (v > 0) state.presupuestos[i.dataset.cat] = v; else delete state.presupuestos[i.dataset.cat];
+  });
+  guardar(); cerrarModal('modal-presupuestos'); renderAnalitica();
+  toast('Presupuestos guardados 📋');
+});
+function renderPresupuestos() {
+  const mes = mesActual();
+  const conPpto = CATS_GASTO.filter(c => Number(state.presupuestos[c]) > 0);
+  $('#lista-presupuestos').innerHTML = conPpto.length ? conPpto.map(c => {
+    const p = Number(state.presupuestos[c]);
+    const g = suma(delMes(state.gastos.filter(x => x.cat === c), mes));
+    const pct = Math.min(100, (g / p) * 100);
+    const pasado = g > p;
+    const color = pasado ? 'bg-danger-500' : pct >= 80 ? 'bg-amberx-500' : 'bg-brand-500';
+    return `<div>
+      <div class="flex justify-between items-baseline text-xs mb-1">
+        <span class="font-semibold">${ICONO_GASTO[c]} ${c}</span>
+        <span class="${pasado ? 'text-danger-500 font-bold' : 'text-slate-400'}">${fmt(g)} / ${fmt(p)}${pasado ? ` · ⚠️ excedido en ${fmt(g - p)}` : ` · queda ${fmt(p - g)}`}</span>
+      </div>
+      <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+        <div class="barra h-full rounded-full ${color}" style="width:${pct.toFixed(1)}%"></div>
+      </div>
+    </div>`;
+  }).join('') : '<p class="text-sm text-slate-400">Sin presupuestos definidos. Usa «Editar presupuestos» para fijar topes por categoría.</p>';
+}
+
+// --- Gráficos de la pestaña Analítica ---
+function crearChartsAnalitica() {
+  const oscuro = !!state.config.dark;
+  const ct = oscuro ? '#cbd5e1' : '#475569';
+  const cg = oscuro ? '#33415555' : '#e2e8f0';
+  ['tasa', 'flujo', 'stacked', 'metodo', 'top', 'semana'].forEach(k => { if (chartsA[k]) { chartsA[k].destroy(); delete chartsA[k]; } });
+
+  const m12 = mesesAtras(12), m6 = mesesAtras(6), mes = mesActual();
+  const lab12 = m12.map(etiquetaMes), lab6 = m6.map(etiquetaMes);
+  const legend = {position: 'bottom', labels: {color: ct, boxWidth: 10, font: {size: 10}}};
+  const ejes = yCb => ({x: {ticks: {color: ct, font: {size: 10}}, grid: {display: false}}, y: {ticks: {color: ct, font: {size: 10}, callback: yCb}, grid: {color: cg}}});
+  const solY = v => 'S/ ' + Number(v).toLocaleString('es-PE');
+
+  // 1) Tasa de ahorro 12m + línea de meta
+  const tasas = m12.map(tasaDeMes);
+  chartsA.tasa = new Chart($('#chartTasa'), {type: 'line', data: {labels: lab12, datasets: [
+    {label: 'Tasa de ahorro', data: tasas, borderColor: '#22a570', backgroundColor: '#22a57033', fill: true, tension: .3, spanGaps: true, pointRadius: 3},
+    {label: `Meta (${state.config.metaAhorro}%)`, data: m12.map(() => state.config.metaAhorro), borderColor: '#f59e0b', borderDash: [6, 4], pointRadius: 0, fill: false}
+  ]}, options: {responsive: true, maintainAspectRatio: false,
+    plugins: {legend, tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${c.parsed.y == null ? '—' : c.parsed.y.toFixed(1) + '%'}`}}},
+    scales: ejes(v => v + '%')}});
+
+  // 2) Flujo 12m: ingresos, gastos, ahorro neto + media móvil 3m del ahorro
+  const sIng = m12.map(ingDeMes), sGas = m12.map(gasDeMes);
+  const sNeto = m12.map((m, i) => sIng[i] - sGas[i]);
+  chartsA.flujo = new Chart($('#chartFlujo'), {type: 'line', data: {labels: lab12, datasets: [
+    {label: 'Ingresos', data: sIng, borderColor: '#22a570', tension: .3, pointRadius: 2, fill: false},
+    {label: 'Gastos', data: sGas, borderColor: '#ef4444', tension: .3, pointRadius: 2, fill: false},
+    {label: 'Ahorro neto', data: sNeto, borderColor: '#3b82f6', backgroundColor: '#3b82f622', tension: .3, pointRadius: 2, fill: true},
+    {label: 'Ahorro MM3', data: mediaMovil(sNeto, 3), borderColor: '#94a3b8', borderDash: [5, 4], pointRadius: 0, fill: false}
+  ]}, options: {responsive: true, maintainAspectRatio: false,
+    plugins: {legend, tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
+    scales: ejes(solY)}});
+
+  // 3) Barras apiladas: composición del gasto por categoría (6m)
+  chartsA.stacked = new Chart($('#chartStacked'), {type: 'bar', data: {labels: lab6,
+    datasets: CATS_GASTO.map((c, i) => ({label: c, data: m6.map(mm => suma(delMes(state.gastos.filter(g => g.cat === c), mm))), backgroundColor: PALETA[i % PALETA.length], borderRadius: 2, maxBarThickness: 36}))},
+    options: {responsive: true, maintainAspectRatio: false,
+      plugins: {legend, tooltip: {callbacks: {label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
+      scales: {x: {stacked: true, ticks: {color: ct, font: {size: 10}}, grid: {display: false}},
+               y: {stacked: true, ticks: {color: ct, font: {size: 10}, callback: solY}, grid: {color: cg}}}}});
+
+  // 4) Dona: gasto del mes por método de pago
+  const gm = delMes(state.gastos, mes);
+  const porMetodo = {};
+  gm.forEach(g => porMetodo[g.metodo] = (porMetodo[g.metodo] || 0) + Number(g.monto));
+  const COLOR_METODO = {'Efectivo': '#22a570', 'Débito': '#3b82f6', 'Tarjeta de crédito': '#f59e0b'};
+  chartsA.metodo = new Chart($('#chartMetodo'), {type: 'doughnut', data: {labels: Object.keys(porMetodo),
+    datasets: [{data: Object.values(porMetodo), backgroundColor: Object.keys(porMetodo).map(k => COLOR_METODO[k] || '#8b5cf6'), borderWidth: 0, hoverOffset: 8}]},
+    options: {responsive: true, maintainAspectRatio: false, cutout: '60%',
+      plugins: {legend, tooltip: {callbacks: {label: c => ` ${c.label}: ${fmt(c.parsed)}`}}}}});
+
+  // 5) Top categorías del mes (horizontal, con % del total)
+  const porCat = {};
+  gm.forEach(g => porCat[g.cat] = (porCat[g.cat] || 0) + Number(g.monto));
+  const totalMes = suma(gm) || 1;
+  const top = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
+  chartsA.top = new Chart($('#chartTop'), {type: 'bar', data: {
+    labels: top.map(([c, v]) => `${c} · ${(v / totalMes * 100).toFixed(0)}%`),
+    datasets: [{data: top.map(([, v]) => v), backgroundColor: PALETA, borderRadius: 5, maxBarThickness: 22}]},
+    options: {indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${fmt(c.parsed.x)}`}}},
+      scales: {x: {ticks: {color: ct, font: {size: 10}, callback: solY}, grid: {color: cg}},
+               y: {ticks: {color: ct, font: {size: 10}}, grid: {display: false}}}}});
+
+  // 6) Gasto por día de la semana (últimos 90 días)
+  const dow = Array(7).fill(0);
+  const desde = new Date(); desde.setDate(desde.getDate() - 90);
+  state.gastos.forEach(g => {
+    const [y, mm, dd] = (g.fecha || '').split('-').map(Number);
+    if (!y) return;
+    const dt = new Date(y, mm - 1, dd);
+    if (dt >= desde) dow[(dt.getDay() + 6) % 7] += Number(g.monto); // 0 = lunes
+  });
+  chartsA.semana = new Chart($('#chartSemana'), {type: 'bar', data: {
+    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+    datasets: [{data: dow, backgroundColor: dow.map((_, i) => i >= 5 ? '#f59e0b' : '#3b82f6'), borderRadius: 6, maxBarThickness: 34}]},
+    options: {responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${fmt(c.parsed.y)}`}}},
+      scales: ejes(solY)}});
+}
+
+// --- Render principal de la pestaña Analítica ---
+function renderAnalitica() {
+  if (!$('#kpi-grid')) return;
+  const mes = mesActual();
+  const hoy = new Date();
+  const diaHoy = hoy.getDate();
+  const diasDelMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  const m12 = mesesAtras(12);
+  const mesPrev = m12[m12.length - 2];
+  const pctDelta = (a, b) => (b && isFinite(b)) ? ((a - b) / Math.abs(b)) * 100 : null;
+
+  // ---- KPIs ----
+  const tasaMes = tasaDeMes(mes), tasaPrev = tasaDeMes(mesPrev);
+  const m6 = mesesAtras(6), m6p = mesesAtras(7).slice(0, 6); // 6m actuales vs 6m terminando el mes pasado
+  const ing6 = promedio(m6.map(ingDeMes)), gas6 = promedio(m6.map(gasDeMes));
+  const ing6p = promedio(m6p.map(ingDeMes)), gas6p = promedio(m6p.map(gasDeMes));
+  const gasMesAct = gasDeMes(mes), ingMesAct = ingDeMes(mes);
+  const burn = gasMesAct / Math.max(1, diaHoy);
+  const diasMesPrev = new Date(hoy.getFullYear(), hoy.getMonth(), 0).getDate();
+  const burnPrev = gasDeMes(mesPrev) / diasMesPrev;
+  const deuda = totalDeudaTarjetas();
+  const ingRef = ingMesAct || ing6;
+  const ratio = ingRef > 0 ? (deuda / ingRef) * 100 : null;
+  const semaforo = ratio == null ? '⚪' : ratio <= 30 ? '🟢' : ratio <= 60 ? '🟡' : '🔴';
+  const ahorros = state.metas.reduce((a, x) => a + Number(x.actual || 0), 0);
+  const runway = gas6 > 0 ? ahorros / gas6 : null;
+
+  $('#kpi-grid').innerHTML =
+    kpi('💚 Tasa de ahorro del mes', tasaMes == null ? '—' : tasaMes.toFixed(1) + '%', `meta: ${state.config.metaAhorro}%`,
+        (tasaMes != null && tasaPrev != null) ? tasaMes - tasaPrev : null, false, ' pp') +
+    kpi('📈 Ingreso promedio (6m)', fmt(ing6), 'vs 6m previos', pctDelta(ing6, ing6p)) +
+    kpi('📉 Gasto promedio (6m)', fmt(gas6), 'vs 6m previos', pctDelta(gas6, gas6p), true) +
+    kpi('🔥 Burn rate diario', fmt(burn), `día ${diaHoy}/${diasDelMes} del mes`, pctDelta(burn, burnPrev), true) +
+    kpi(`${semaforo} Deuda / ingreso`, ratio == null ? '—' : ratio.toFixed(0) + '%', 'deuda TC ÷ ingreso mensual', null) +
+    kpi('🛟 Runway', runway == null ? '—' : runway.toFixed(1) + ' meses', 'ahorro en metas ÷ gasto prom.', null);
+
+  // ---- Insights automáticos ----
+  const frases = [];
+  if (tasaMes != null) {
+    const ok = tasaMes >= state.config.metaAhorro;
+    frases.push(`${ok ? '✅' : '⚠️'} Tu tasa de ahorro del mes (<b>${tasaMes.toFixed(1)}%</b>) está <b>${ok ? 'por encima' : 'por debajo'}</b> de tu meta del ${state.config.metaAhorro}%.`);
+  }
+  // Categoría con mayor desvío vs su promedio de los 3 meses previos
+  const m3p = mesesAtras(4).slice(0, 3);
+  let peor = null;
+  CATS_GASTO.forEach(c => {
+    const act = suma(delMes(state.gastos.filter(g => g.cat === c), mes));
+    const prom = promedio(m3p.map(mm => suma(delMes(state.gastos.filter(g => g.cat === c), mm))));
+    if (prom >= 30 && act > prom) {
+      const v = ((act - prom) / prom) * 100;
+      if (v >= 15 && (!peor || v > peor.v)) peor = {c, v, act, prom};
+    }
+  });
+  if (peor) frases.push(`📈 Gastaste <b>${peor.v.toFixed(0)}% más en ${peor.c}</b> (${fmt(peor.act)}) que tu promedio de los últimos 3 meses (${fmt(peor.prom)}).`);
+  // Mayor fuga del mes
+  const gm = delMes(state.gastos, mes);
+  const fugas = {};
+  gm.forEach(g => { (fugas[g.cat] = fugas[g.cat] || {t: 0, n: 0}); fugas[g.cat].t += Number(g.monto); fugas[g.cat].n++; });
+  const fuga = Object.entries(fugas).sort((a, b) => b[1].t - a[1].t)[0];
+  if (fuga) frases.push(`💸 Tu mayor fuga este mes: <b>${fuga[0]}</b>, ${fmt(fuga[1].t)} en ${fuga[1].n} movimiento${fuga[1].n === 1 ? '' : 's'}.`);
+  // Proyección de cierre de mes
+  if (diaHoy >= 3 && gasMesAct > 0 && ingMesAct > 0) {
+    const proy = (gasMesAct / diaHoy) * diasDelMes;
+    frases.push(proy > ingMesAct
+      ? `🚨 A tu ritmo actual cerrarías el mes gastando <b>${fmt(proy)}</b>, por encima de tus ingresos (${fmt(ingMesAct)}).`
+      : `📊 Proyección de gasto a fin de mes: <b>${fmt(proy)}</b> (${(proy / ingMesAct * 100).toFixed(0)}% de tus ingresos).`);
+  }
+  // Proyección de la primera meta activa
+  const metaAct = state.metas.find(x => Number(x.actual) < Number(x.objetivo));
+  if (metaAct) {
+    const p = proyectarMeta(metaAct);
+    if (p && p.mesesFalta != null) frases.push(`🎯 A tu ritmo, alcanzarás «<b>${esc(metaAct.nombre)}</b>» en ~${p.mesesFalta} mes${p.mesesFalta === 1 ? '' : 'es'} (${p.fechaTxt}).`);
+  }
+  // Gasto hormiga
+  const hormiga = gm.filter(g => Number(g.monto) < 30);
+  if (hormiga.length) frases.push(`🐜 Tus <b>gastos hormiga</b> (menores a S/ 30) suman <b>${fmt(suma(hormiga))}</b> este mes, en ${hormiga.length} compras.`);
+  $('#panel-insights').innerHTML = frases.length
+    ? frases.slice(0, 6).map(f => `<p class="text-sm leading-snug">${f}</p>`).join('')
+    : '<p class="text-sm text-slate-400">Registra movimientos para generar insights automáticos.</p>';
+
+  // ---- Gastos inusuales (> 2 desviaciones estándar de su categoría) ----
+  const anomalias = [];
+  CATS_GASTO.forEach(c => {
+    const xs = state.gastos.filter(g => g.cat === c);
+    if (xs.length < 5) return; // muestra mínima para que la estadística tenga sentido
+    const vals = xs.map(g => Number(g.monto));
+    const mu = promedio(vals);
+    const sd = Math.sqrt(promedio(vals.map(v => (v - mu) ** 2)));
+    if (sd <= 0) return;
+    xs.forEach(g => { const z = (Number(g.monto) - mu) / sd; if (z > 2) anomalias.push({...g, mu, z}); });
+  });
+  anomalias.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  $('#lista-anomalias').innerHTML = anomalias.length ? anomalias.slice(0, 8).map(a => `
+    <div class="flex items-center justify-between gap-2 rounded-xl bg-danger-50 dark:bg-danger-600/10 px-3 py-2">
+      <div class="min-w-0">
+        <p class="text-sm font-semibold truncate">${ICONO_GASTO[a.cat] || '📦'} ${esc(a.desc) || a.cat} <span class="text-xs font-normal text-slate-400">· ${fmtFecha(a.fecha)}</span></p>
+        <p class="text-xs text-slate-400">típico en ${a.cat}: ${fmt(a.mu)} · z = ${a.z.toFixed(1)}</p>
+      </div>
+      <p class="font-extrabold text-danger-500 whitespace-nowrap">${fmt(a.monto)}</p>
+    </div>`).join('') : '<p class="text-sm text-slate-400">Sin gastos fuera de lo normal 👌</p>';
+
+  // ---- Gasto hormiga (tarjeta) ----
+  $('#hormiga-card').innerHTML = hormiga.length ? `
+    <p class="text-3xl font-extrabold text-amberx-500">${fmt(suma(hormiga))}</p>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${hormiga.length} compras menores a S/ 30 este mes
+      ${gasMesAct > 0 ? `· <b>${(suma(hormiga) / gasMesAct * 100).toFixed(1)}%</b> de tu gasto total` : ''}</p>
+    <div class="mt-3 space-y-1">${ordenarFecha(hormiga).slice(0, 5).map(g =>
+      `<p class="text-xs text-slate-400 flex justify-between"><span class="truncate">${ICONO_GASTO[g.cat] || '📦'} ${esc(g.desc) || g.cat}</span><span class="shrink-0 ml-2">${fmt(g.monto)}</span></p>`).join('')}
+    </div>` : '<p class="text-sm text-slate-400">Sin gastos hormiga este mes 🎉</p>';
+
+  // ---- Presupuestos y gráficos ----
+  renderPresupuestos();
+  crearChartsAnalitica();
+  renderChartMeta();
+}
+
+// =================================================================
+// RENDER GLOBAL E INICIO
+// =================================================================
+function renderTodo() {
+  $('#banner-ejemplo').classList.toggle('hidden', !state.config.ejemplo);
+  renderNav();
+  renderDashboard();
+  renderAnalitica();
+  renderIngresos();
+  renderGastos();
+  renderTarjetas();
+  renderCobrar();
+  renderMetas();
+  renderEmpresa();
+}
+
+// Arranque de la aplicación
+cargar();
+aplicarTema();
+aplicarToggleEmpresa();
+$('#f-ing-mes').value = mesActual();
+$('#f-gas-mes').value = mesActual();
+$('#f-emp-mes').value = mesActual();
+$('#cfg-meta-ahorro').value = state.config.metaAhorro;
+renderTodo();
+
+</script>
+
+</body>
+</html>
