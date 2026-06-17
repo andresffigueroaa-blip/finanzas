@@ -7,10 +7,37 @@
 <!-- ============================================================
      MisFinanzas PE — App de finanzas personales (Perú)
      Un solo archivo: HTML + Tailwind (CDN) + JS vanilla + Chart.js (CDN)
-     Datos guardados en localStorage del navegador. Sin backend.
+     Datos sincronizados en la nube con Firebase (Auth + Firestore)
+     ------------------------------------------------------------
+     ✍️  Creado por: AEs · By Vigorr
+     © Andrés Figueroa — Todos los derechos reservados
      ============================================================ -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- ============================================================
+     Firebase (sincronización en la nube + login)
+     SDK "compat" v10 cargado por CDN — funciona con JS vanilla.
+     ============================================================ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  /* ⚠️ PEGA AQUÍ TU CONFIG DE FIREBASE ⚠️
+     La obtienes en: consola de Firebase → ⚙️ Configuración del proyecto →
+     "Tus apps" → ícono web (</>). Reemplaza TODO este objeto por el tuyo. */
+  const firebaseConfig = {
+    apiKey: "PEGA_TU_API_KEY",
+    authDomain: "PEGA_TU_PROYECTO.firebaseapp.com",
+    projectId: "PEGA_TU_PROYECTO",
+    storageBucket: "PEGA_TU_PROYECTO.appspot.com",
+    messagingSenderId: "PEGA_TU_SENDER_ID",
+    appId: "PEGA_TU_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
@@ -49,6 +76,35 @@
 </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-screen">
+
+<!-- ============================================================
+     PANTALLA DE LOGIN (se muestra hasta que inicies sesión)
+     ============================================================ -->
+<div id="auth-screen" class="fixed inset-0 z-[100] bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4">
+  <div class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-soft p-7 pop-in">
+    <div class="text-center mb-6">
+      <div class="text-4xl mb-2">💰</div>
+      <h1 class="text-xl font-extrabold">MisFinanzas PE</h1>
+      <p id="auth-sub" class="text-sm text-slate-500 dark:text-slate-400 mt-1">Inicia sesión para ver tus finanzas en todos tus dispositivos</p>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-medium text-slate-500">Correo</label>
+        <input id="auth-email" type="email" autocomplete="email" placeholder="tucorreo@gmail.com"
+          class="w-full mt-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-slate-500">Contraseña</label>
+        <input id="auth-pass" type="password" autocomplete="current-password" placeholder="••••••••"
+          class="w-full mt-1 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand-500">
+      </div>
+      <p id="auth-error" class="text-sm text-danger-500 hidden"></p>
+      <button id="btn-login" class="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold">Entrar</button>
+      <button id="btn-signup" class="w-full py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 font-semibold">Crear cuenta nueva</button>
+      <button id="btn-reset" class="w-full text-xs text-slate-500 hover:text-brand-500 pt-1">¿Olvidaste tu contraseña?</button>
+    </div>
+  </div>
+</div>
 
 <div class="flex min-h-screen">
 
@@ -367,6 +423,15 @@
         <div class="space-y-4 max-w-xl">
           <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft flex items-center justify-between gap-4">
             <div>
+              <p class="font-bold">👤 Tu cuenta</p>
+              <p id="cuenta-email" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">—</p>
+              <p id="sync-estado" class="text-xs font-medium text-brand-500 mt-1">☁️ Sincronizado</p>
+            </div>
+            <button onclick="cerrarSesion()" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 font-semibold text-sm shrink-0">Cerrar sesión</button>
+          </div>
+
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft flex items-center justify-between gap-4">
+            <div>
               <p class="font-bold">🏢 Modo empresa</p>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Activa una sección extra para registrar ventas y costos de tu negocio por separado.</p>
             </div>
@@ -377,7 +442,7 @@
 
           <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
             <p class="font-bold mb-1">💾 Respaldo de datos</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Descarga un JSON con todo, o restáuralo en otro dispositivo. Tus datos solo viven en este navegador.</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Tus datos se sincronizan con tu cuenta en la nube. Aun así, puedes descargar un respaldo JSON o restaurarlo cuando quieras.</p>
             <div class="flex flex-wrap gap-2">
               <button onclick="exportarDatos()" class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm">⬇️ Exportar datos</button>
               <label class="px-4 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white font-semibold text-sm cursor-pointer">⬆️ Importar datos
@@ -607,6 +672,8 @@
 /* ================================================================
    LÓGICA DE LA APLICACIÓN (JavaScript vanilla)
    Todo se guarda en localStorage bajo la clave 'misfinanzas_pe_v1'
+   ----------------------------------------------------------------
+   ✍️  Creado por: AEs · By Vigorr
    ================================================================ */
 
 // ---------- Constantes ----------
@@ -636,7 +703,43 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const ordenarFecha = arr => arr.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
 const etiquetaMes = m => MESES_ABR[parseInt(m.slice(5)) - 1] + ' ' + m.slice(2, 4);
 
-function guardar() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+// Guarda al instante en el navegador (caché local) y sube a la nube con un
+// pequeño retraso, para no escribir en Firestore en cada tecla.
+let _syncTimer = null;
+function guardar() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  if (!auth.currentUser) return;            // sin sesión: solo caché local
+  clearTimeout(_syncTimer);
+  marcarSync('pendiente');
+  _syncTimer = setTimeout(subirNube, 1200);
+}
+
+// Sube el estado completo al documento del usuario en Firestore.
+async function subirNube() {
+  if (!auth.currentUser) return;
+  try {
+    await db.collection('usuarios').doc(auth.currentUser.uid)
+      .set({ state, actualizado: Date.now() });
+    marcarSync('ok');
+  } catch (e) {
+    console.warn('No se pudo sincronizar', e);
+    marcarSync('error');
+  }
+}
+
+// Indicador visual de sincronización (se pinta en Ajustes si existe el elemento).
+function marcarSync(estado) {
+  const el = document.getElementById('sync-estado');
+  if (!el) return;
+  const map = {
+    pendiente: ['⏳ Guardando…', 'text-amberx-500'],
+    ok:        ['☁️ Sincronizado', 'text-brand-500'],
+    error:     ['⚠️ Sin conexión (guardado local)', 'text-danger-500']
+  };
+  const [txt, cls] = map[estado] || ['', ''];
+  el.textContent = txt;
+  el.className = 'text-xs font-medium ' + cls;
+}
 
 function toast(msg, tipo = 'ok') {
   const colores = {ok: 'bg-brand-500', error: 'bg-danger-500', info: 'bg-ocean-500'};
@@ -1762,15 +1865,107 @@ function renderTodo() {
   renderEmpresa();
 }
 
-// Arranque de la aplicación
-cargar();
-aplicarTema();
-aplicarToggleEmpresa();
-$('#f-ing-mes').value = mesActual();
-$('#f-gas-mes').value = mesActual();
-$('#f-emp-mes').value = mesActual();
-$('#cfg-meta-ahorro').value = state.config.metaAhorro;
-renderTodo();
+// ============================================================
+//  AUTENTICACIÓN Y SINCRONIZACIÓN EN LA NUBE
+// ============================================================
+
+// Trae el estado desde Firestore. Si el usuario aún no tiene datos en la nube,
+// usa lo que haya en este navegador (o datos de ejemplo) y lo sube por primera vez.
+async function cargarDesdeNube() {
+  try {
+    const doc = await db.collection('usuarios').doc(auth.currentUser.uid).get();
+    if (doc.exists && doc.data().state) {
+      state = doc.data().state;
+      migrar();
+      return;
+    }
+  } catch (e) {
+    console.warn('No se pudo leer de la nube, uso caché local', e);
+  }
+  cargar();          // llena state desde localStorage o datos de ejemplo
+  await subirNube(); // primera subida a la nube para esta cuenta
+}
+
+function mostrarAuthError(msg) {
+  const el = $('#auth-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function limpiarAuthError() { $('#auth-error').classList.add('hidden'); }
+
+const traduceError = code => ({
+  'auth/invalid-email': 'El correo no es válido.',
+  'auth/missing-password': 'Escribe tu contraseña.',
+  'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+  'auth/email-already-in-use': 'Ya existe una cuenta con ese correo. Pulsa "Entrar".',
+  'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+  'auth/user-not-found': 'No existe una cuenta con ese correo. Crea una nueva.',
+  'auth/wrong-password': 'Contraseña incorrecta.',
+  'auth/network-request-failed': 'Sin conexión a internet.',
+  'auth/too-many-requests': 'Demasiados intentos. Espera un momento.'
+}[code] || 'Ocurrió un error. Intenta de nuevo.');
+
+$('#btn-login').onclick = async () => {
+  limpiarAuthError();
+  try {
+    await auth.signInWithEmailAndPassword($('#auth-email').value.trim(), $('#auth-pass').value);
+  } catch (e) { mostrarAuthError(traduceError(e.code)); }
+};
+
+$('#btn-signup').onclick = async () => {
+  limpiarAuthError();
+  try {
+    await auth.createUserWithEmailAndPassword($('#auth-email').value.trim(), $('#auth-pass').value);
+    toast('Cuenta creada. ¡Bienvenido!');
+  } catch (e) { mostrarAuthError(traduceError(e.code)); }
+};
+
+$('#btn-reset').onclick = async () => {
+  limpiarAuthError();
+  const email = $('#auth-email').value.trim();
+  if (!email) return mostrarAuthError('Escribe tu correo arriba y vuelve a pulsar.');
+  try {
+    await auth.sendPasswordResetEmail(email);
+    toast('Te enviamos un correo para restablecer tu contraseña.');
+  } catch (e) { mostrarAuthError(traduceError(e.code)); }
+};
+
+// Permite pulsar Enter en los campos para entrar
+['#auth-email', '#auth-pass'].forEach(s =>
+  $(s).addEventListener('keydown', e => { if (e.key === 'Enter') $('#btn-login').click(); }));
+
+function cerrarSesion() {
+  clearTimeout(_syncTimer);
+  subirNube().finally(() => auth.signOut());
+}
+
+// Inicializa la interfaz una vez que tenemos el estado cargado.
+function iniciarApp() {
+  aplicarTema();
+  aplicarToggleEmpresa();
+  $('#f-ing-mes').value = mesActual();
+  $('#f-gas-mes').value = mesActual();
+  $('#f-emp-mes').value = mesActual();
+  $('#cfg-meta-ahorro').value = state.config.metaAhorro;
+  renderTodo();
+}
+
+// Observa el estado de sesión: decide entre mostrar login o arrancar la app.
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    $('#auth-email').value = '';
+    $('#auth-pass').value = '';
+    limpiarAuthError();
+    await cargarDesdeNube();
+    iniciarApp();
+    const emailEl = document.getElementById('cuenta-email');
+    if (emailEl) emailEl.textContent = user.email;
+    marcarSync('ok');
+    $('#auth-screen').classList.add('hidden');
+  } else {
+    $('#auth-screen').classList.remove('hidden');
+  }
+});
 
 </script>
 
