@@ -38,9 +38,6 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db   = firebase.firestore();
-  // Persistencia offline: si registras algo sin internet o cierras la app antes
-  // de que suba, Firestore guarda el cambio y lo envía solo al reconectar.
-  db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   // Mantener la sesión iniciada entre visitas (no pedir login cada vez).
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 </script>
@@ -79,6 +76,10 @@
   @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
   .barra { transition: width .6s cubic-bezier(.4,0,.2,1); }
   input, select, textarea { outline: none; }
+  /* Bloques que solo aparecen en Modo de análisis Avanzado */
+  body:not(.analisis-avanzado) .solo-avanzado { display: none !important; }
+  .heat-cell { transition: transform .12s ease; }
+  .heat-cell:hover { transform: scale(1.12); z-index: 2; }
 </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-screen">
@@ -227,6 +228,45 @@
         <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft mb-5">
           <h3 class="font-bold mb-3">🧠 Insights del mes</h3>
           <div id="panel-insights" class="space-y-2"></div>
+        </div>
+
+        <!-- 🤖 Asesor con IA -->
+        <div class="rounded-2xl bg-gradient-to-br from-slate-900 to-ocean-900/40 dark:from-slate-900 dark:to-ocean-900/30 border border-ocean-500/30 p-5 shadow-soft mb-5 text-white">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <div>
+              <h3 class="font-bold">🤖 Tu asesor financiero con IA</h3>
+              <p class="text-xs text-slate-300">Análisis en lenguaje natural de cómo van tus finanzas, estilo asesor de inversión.</p>
+            </div>
+            <button id="btn-ia" onclick="analizarConIA()" class="px-4 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white font-semibold text-sm shadow-card shrink-0">✨ Analizar mis finanzas</button>
+          </div>
+          <div id="ia-salida" class="text-sm leading-relaxed text-slate-100 space-y-2 mt-3"></div>
+        </div>
+
+        <!-- 📆 Análisis diario y semanal (modo avanzado) -->
+        <div class="solo-avanzado grid lg:grid-cols-2 gap-4 mb-4">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">📈 Gasto día a día (mes actual)</h3>
+            <p class="text-xs text-slate-400 mb-3">Barras por día · línea de tu promedio diario</p>
+            <div class="relative h-60"><canvas id="chartDiario"></canvas></div>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">🏃 Gasto acumulado del mes</h3>
+            <p class="text-xs text-slate-400 mb-3">Lo que llevas gastado vs tus ingresos del mes</p>
+            <div class="relative h-60"><canvas id="chartAcumulado"></canvas></div>
+          </div>
+        </div>
+
+        <div class="solo-avanzado grid lg:grid-cols-2 gap-4 mb-4">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">🗓️ Calendario de gastos</h3>
+            <p class="text-xs text-slate-400 mb-3">Mapa de calor del mes · entre más oscuro, más gastaste ese día</p>
+            <div id="heatmap-cal"></div>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <h3 class="font-bold mb-1">📊 Esta semana vs la pasada</h3>
+            <p class="text-xs text-slate-400 mb-3">Gasto diario lunes a domingo</p>
+            <div class="relative h-60"><canvas id="chartSemanaVs"></canvas></div>
+          </div>
         </div>
 
         <!-- Fila 1: tendencias a 12 meses -->
@@ -451,6 +491,26 @@
             <button id="toggle-empresa" onclick="toggleEmpresa()" class="relative w-12 h-7 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0">
               <span id="toggle-empresa-dot" class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform"></span>
             </button>
+          </div>
+
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft flex items-center justify-between gap-4">
+            <div>
+              <p class="font-bold">📊 Modo de análisis avanzado</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Desbloquea gráficos diarios, calendario de gastos, comparativos semanales y un coach financiero más detallado.</p>
+            </div>
+            <button id="toggle-avanzado" onclick="toggleAvanzado()" class="relative w-12 h-7 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0">
+              <span id="toggle-avanzado-dot" class="absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform"></span>
+            </button>
+          </div>
+
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <p class="font-bold mb-1">🤖 IA (Google Gemini)</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Pega tu clave gratuita de Gemini para que el asesor analice tus finanzas con IA real. Consíguela en <span class="text-ocean-500">aistudio.google.com/apikey</span>. Se guarda solo en tu cuenta.</p>
+            <div class="flex flex-wrap gap-2">
+              <input type="password" id="cfg-gemini-key" placeholder="AIza..." class="flex-1 min-w-[200px] rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm">
+              <button onclick="guardarGeminiKey()" class="px-4 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white font-semibold text-sm">Guardar clave</button>
+            </div>
+            <p id="gemini-estado" class="text-xs mt-2 text-slate-400"></p>
           </div>
 
           <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
@@ -830,6 +890,8 @@ function datosEjemplo() {
 function migrar() {
   state.presupuestos = state.presupuestos || {};
   if (state.config.metaAhorro == null) state.config.metaAhorro = 20;
+  if (state.config.analisisAvanzado == null) state.config.analisisAvanzado = false;
+  if (state.config.geminiKey == null) state.config.geminiKey = '';
   (state.metas || []).forEach(m => {
     if (!m.historial) m.historial = Number(m.actual) > 0 ? [{fecha: hoyISO(), monto: Number(m.actual)}] : [];
   });
@@ -1862,11 +1924,333 @@ function renderAnalitica() {
   renderPresupuestos();
   crearChartsAnalitica();
   renderChartMeta();
+  if (state.config.analisisAvanzado) {
+    crearChartsDiarios();
+    renderHeatmap();
+  }
+  coachAvanzado();
 }
 
 // =================================================================
-// RENDER GLOBAL E INICIO
+// 9b) ANÁLISIS DIARIO / SEMANAL (modo avanzado)
 // =================================================================
+
+// Devuelve un array con el gasto total de cada día del mes 'YYYY-MM'.
+function gastoPorDiaDelMes(mes) {
+  const dias = new Date(+mes.slice(0,4), +mes.slice(5,7), 0).getDate();
+  const arr = Array(dias).fill(0);
+  delMes(state.gastos, mes).forEach(g => {
+    const d = parseInt((g.fecha || '').slice(8, 10), 10);
+    if (d >= 1 && d <= dias) arr[d - 1] += Number(g.monto);
+  });
+  return arr;
+}
+
+// Gasto diario de una semana que empieza en 'inicio' (Date, lunes). 7 valores.
+function gastoSemana(inicio) {
+  const r = Array(7).fill(0);
+  state.gastos.forEach(g => {
+    const [y, m, d] = (g.fecha || '').split('-').map(Number);
+    if (!y) return;
+    const dt = new Date(y, m - 1, d);
+    const diff = Math.floor((dt - inicio) / 86400000);
+    if (diff >= 0 && diff < 7) r[diff] += Number(g.monto);
+  });
+  return r;
+}
+function lunesDeEstaSemana() {
+  const h = new Date(); h.setHours(0,0,0,0);
+  const d = new Date(h); d.setDate(h.getDate() - ((h.getDay() + 6) % 7));
+  return d;
+}
+
+function crearChartsDiarios() {
+  const oscuro = !!state.config.dark;
+  const ct = oscuro ? '#cbd5e1' : '#475569';
+  const cg = oscuro ? '#33415555' : '#e2e8f0';
+  const solY = v => 'S/ ' + Number(v).toLocaleString('es-PE');
+  ['diario', 'acumulado', 'semanaVs'].forEach(k => { if (chartsA[k]) { chartsA[k].destroy(); delete chartsA[k]; } });
+
+  const mes = mesActual();
+  const hoy = new Date();
+  const diaHoy = mes === hoy.toISOString().slice(0,7) ? hoy.getDate() : null;
+  const serie = gastoPorDiaDelMes(mes);
+  const labels = serie.map((_, i) => i + 1);
+  // Promedio diario solo de los días con gasto hasta hoy
+  const hasta = diaHoy || serie.length;
+  const conGasto = serie.slice(0, hasta).filter(v => v > 0);
+  const prom = conGasto.length ? conGasto.reduce((a,b)=>a+b,0)/conGasto.length : 0;
+
+  // 1) Gasto día a día (barras) + línea de promedio
+  chartsA.diario = new Chart($('#chartDiario'), {
+    type: 'bar',
+    data: {labels, datasets: [
+      {type:'bar', label:'Gasto del día', data: serie.map((v,i)=> (diaHoy && i+1>diaHoy)?null:v),
+        backgroundColor: serie.map(v => v > prom*1.5 && prom>0 ? '#ef4444' : '#3b82f6'), borderRadius:4, maxBarThickness:18},
+      {type:'line', label:'Promedio diario', data: labels.map(()=>prom), borderColor:'#f59e0b', borderDash:[5,4], pointRadius:0, fill:false}
+    ]},
+    options: {responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{color:ct, boxWidth:10, font:{size:10}}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`, title:items=>`Día ${items[0].label}`}}},
+      scales:{x:{ticks:{color:ct, font:{size:9}, maxTicksLimit:16}, grid:{display:false}},
+              y:{ticks:{color:ct, font:{size:10}, callback:solY}, grid:{color:cg}}}}
+  });
+
+  // 2) Gasto acumulado del mes vs ingresos
+  let acc = 0;
+  const accum = serie.map((v,i)=> (diaHoy && i+1>diaHoy)?null:(acc+=v));
+  const ingMes = suma(delMes(state.ingresos, mes));
+  chartsA.acumulado = new Chart($('#chartAcumulado'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Gasto acumulado', data:accum, borderColor:'#ef4444', backgroundColor:'#ef444422', fill:true, tension:.2, pointRadius:0},
+      {label:'Ingresos del mes', data:labels.map(()=>ingMes), borderColor:'#22a570', borderDash:[6,4], pointRadius:0, fill:false}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{color:ct, boxWidth:10, font:{size:10}}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`, title:items=>`Día ${items[0].label}`}}},
+      scales:{x:{ticks:{color:ct, font:{size:9}, maxTicksLimit:16}, grid:{display:false}},
+              y:{ticks:{color:ct, font:{size:10}, callback:solY}, grid:{color:cg}}}}
+  });
+
+  // 3) Esta semana vs la pasada
+  const lun = lunesDeEstaSemana();
+  const lunPrev = new Date(lun); lunPrev.setDate(lun.getDate() - 7);
+  chartsA.semanaVs = new Chart($('#chartSemanaVs'), {
+    type:'bar',
+    data:{labels:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'], datasets:[
+      {label:'Semana pasada', data:gastoSemana(lunPrev), backgroundColor:'#94a3b8', borderRadius:5, maxBarThickness:20},
+      {label:'Esta semana', data:gastoSemana(lun), backgroundColor:'#3b82f6', borderRadius:5, maxBarThickness:20}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{color:ct, boxWidth:10, font:{size:10}}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
+      scales:{x:{ticks:{color:ct, font:{size:10}}, grid:{display:false}},
+              y:{ticks:{color:ct, font:{size:10}, callback:solY}, grid:{color:cg}}}}
+  });
+}
+
+// Calendario mapa de calor del mes
+function renderHeatmap() {
+  const cont = $('#heatmap-cal');
+  if (!cont) return;
+  const mes = mesActual();
+  const serie = gastoPorDiaDelMes(mes);
+  const max = Math.max(...serie, 1);
+  const primerDia = new Date(+mes.slice(0,4), +mes.slice(5,7)-1, 1);
+  const offset = (primerDia.getDay() + 6) % 7; // 0 = lunes
+  const hoy = new Date();
+  const diaHoy = mes === hoy.toISOString().slice(0,7) ? hoy.getDate() : -1;
+  const dias = ['L','M','M','J','V','S','D'];
+  let html = '<div class="grid grid-cols-7 gap-1.5 text-center text-[10px] text-slate-400 mb-1">' + dias.map(d=>`<div>${d}</div>`).join('') + '</div>';
+  html += '<div class="grid grid-cols-7 gap-1.5">';
+  for (let i = 0; i < offset; i++) html += '<div></div>';
+  serie.forEach((v, i) => {
+    const intensidad = v / max;
+    const bg = v === 0 ? 'rgba(148,163,184,0.12)' :
+      `rgba(34,165,112,${0.2 + intensidad*0.8})`;
+    const borde = (i+1) === diaHoy ? 'box-shadow:0 0 0 2px #3b82f6;' : '';
+    html += `<div class="heat-cell rounded-md aspect-square flex items-center justify-center text-[10px] font-semibold cursor-default"
+      style="background:${bg};${borde}" title="Día ${i+1}: ${fmt(v)}">
+      <span class="${intensidad>0.55?'text-white':'text-slate-500 dark:text-slate-300'}">${i+1}</span></div>`;
+  });
+  html += '</div>';
+  const total = serie.reduce((a,b)=>a+b,0);
+  const diaPico = serie.indexOf(Math.max(...serie)) + 1;
+  html += `<p class="text-xs text-slate-400 mt-3">Total del mes: <b class="text-slate-600 dark:text-slate-200">${fmt(total)}</b>${max>1?` · día de mayor gasto: <b>${diaPico}</b> (${fmt(max)})`:''}</p>`;
+  cont.innerHTML = html;
+}
+
+// Coach analítico: frases extra de estilo asesor cuando el modo avanzado está activo
+function coachAvanzado() {
+  if (!state.config.analisisAvanzado) return;
+  const cont = $('#panel-insights');
+  if (!cont) return;
+  const mes = mesActual();
+  const hoy = new Date();
+  const esMesActual = mes === hoy.toISOString().slice(0,7);
+  const frases = [];
+
+  // Día más caro del mes
+  const serie = gastoPorDiaDelMes(mes);
+  const maxV = Math.max(...serie);
+  if (maxV > 0) {
+    const diaPico = serie.indexOf(maxV) + 1;
+    const promDia = serie.filter(v=>v>0).reduce((a,b)=>a+b,0) / serie.filter(v=>v>0).length;
+    if (maxV > promDia * 1.6) frases.push(`📌 El <b>día ${diaPico}</b> fue tu mayor gasto del mes: <b>${fmt(maxV)}</b>, ${((maxV/promDia-1)*100).toFixed(0)}% por encima de tu día promedio (${fmt(promDia)}).`);
+  }
+
+  // Esta semana vs la pasada
+  if (esMesActual) {
+    const lun = lunesDeEstaSemana();
+    const lunPrev = new Date(lun); lunPrev.setDate(lun.getDate()-7);
+    const estaSem = gastoSemana(lun).reduce((a,b)=>a+b,0);
+    const pasadaSem = gastoSemana(lunPrev).reduce((a,b)=>a+b,0);
+    if (pasadaSem > 0) {
+      const dif = ((estaSem - pasadaSem) / pasadaSem) * 100;
+      if (Math.abs(dif) >= 10) frases.push(`${dif>0?'🔺':'🔽'} Esta semana llevas <b>${fmt(estaSem)}</b>, ${Math.abs(dif).toFixed(0)}% ${dif>0?'más':'menos'} que la semana pasada (${fmt(pasadaSem)}).`);
+    }
+  }
+
+  // Findes vs días de semana (últimos 90 días)
+  const dow = Array(7).fill(0), cnt = Array(7).fill(0);
+  const desde = new Date(); desde.setDate(desde.getDate()-90);
+  state.gastos.forEach(g => {
+    const [y,m,d] = (g.fecha||'').split('-').map(Number); if(!y) return;
+    const dt = new Date(y,m-1,d); if (dt<desde) return;
+    const idx = (dt.getDay()+6)%7; dow[idx]+=Number(g.monto); cnt[idx]++;
+  });
+  const findeProm = (dow[5]+dow[6]) / Math.max(1,(cnt[5]+cnt[6]));
+  const semanaProm = (dow[0]+dow[1]+dow[2]+dow[3]+dow[4]) / Math.max(1,(cnt[0]+cnt[1]+cnt[2]+cnt[3]+cnt[4]));
+  if (findeProm > semanaProm * 1.3 && (cnt[5]+cnt[6]) >= 3)
+    frases.push(`🎉 Gastas en promedio <b>${((findeProm/semanaProm-1)*100).toFixed(0)}% más por compra los fines de semana</b> (${fmt(findeProm)}) que entre semana (${fmt(semanaProm)}).`);
+
+  // Ritmo de gasto vs presupuesto global
+  if (esMesActual) {
+    const diaHoy = hoy.getDate();
+    const diasMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
+    const gasMes = suma(delMes(state.gastos, mes));
+    const proy = diaHoy>=3 ? (gasMes/diaHoy)*diasMes : null;
+    const ingMes = suma(delMes(state.ingresos, mes));
+    if (proy && ingMes>0) {
+      const pct = (proy/ingMes*100).toFixed(0);
+      frases.push(`📐 Vas a un ritmo de <b>${fmt(gasMes/diaHoy)}/día</b>. Proyección de cierre: <b>${fmt(proy)}</b> (${pct}% de tus ingresos).`);
+    }
+  }
+
+  if (frases.length) {
+    cont.innerHTML += `<div class="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700"><p class="text-xs font-bold text-ocean-500 mb-1">🔬 Análisis avanzado</p>${frases.map(f=>`<p class="text-sm leading-snug">${f}</p>`).join('')}</div>`;
+  }
+}
+
+// =================================================================
+// 9c) ASESOR CON IA (Gemini) + motor local de respaldo
+// =================================================================
+
+// Construye un resumen compacto de las finanzas para enviar a la IA o analizar local.
+function resumenFinanciero() {
+  const mes = mesActual();
+  const ingMes = suma(delMes(state.ingresos, mes));
+  const gasMes = suma(delMes(state.gastos, mes));
+  const porCat = {};
+  delMes(state.gastos, mes).forEach(g => porCat[g.cat] = (porCat[g.cat]||0)+Number(g.monto));
+  const m6 = mesesAtras(6);
+  const tasas = m6.map(tasaDeMes).filter(t=>t!=null);
+  const deuda = totalDeudaTarjetas();
+  const hormiga = delMes(state.gastos, mes).filter(g=>Number(g.monto)<30);
+  return {
+    mes, ingMes, gasMes, saldo: ingMes-gasMes,
+    tasaAhorro: ingMes>0 ? ((ingMes-gasMes)/ingMes*100).toFixed(1) : null,
+    metaAhorro: state.config.metaAhorro,
+    porCategoria: porCat,
+    deudaTarjetas: deuda,
+    gastoHormiga: suma(hormiga),
+    nGastosHormiga: hormiga.length,
+    tasaPromedio6m: tasas.length ? (tasas.reduce((a,b)=>a+b,0)/tasas.length).toFixed(1) : null,
+    metas: state.metas.map(m=>({nombre:m.nombre, objetivo:m.objetivo, actual:m.actual}))
+  };
+}
+
+async function analizarConIA() {
+  const salida = $('#ia-salida');
+  const btn = $('#btn-ia');
+  const r = resumenFinanciero();
+  const key = (state.config.geminiKey || '').trim();
+
+  btn.disabled = true; btn.textContent = '⏳ Analizando...';
+  salida.innerHTML = '<p class="text-slate-300">Analizando tus finanzas...</p>';
+
+  if (!key) {
+    salida.innerHTML = informeLocal(r);
+    btn.disabled = false; btn.textContent = '✨ Analizar mis finanzas';
+    salida.innerHTML += '<p class="text-xs text-slate-400 mt-3">💡 Para un análisis con IA real (más detallado y conversacional), agrega tu clave de Gemini en Ajustes.</p>';
+    return;
+  }
+
+  const prompt = `Eres un asesor financiero personal experto, formado en las mejores escuelas de finanzas, asesorando a una persona joven en Perú (moneda Soles, S/). Analiza estos datos de sus finanzas del mes y dale un informe claro, directo y técnico pero comprensible, en español, con: 1) diagnóstico general, 2) lo que está haciendo bien, 3) focos de alerta concretos con cifras, 4) 3 recomendaciones accionables. Sé específico con los números. Usa un tono de asesor profesional cercano. Máximo 280 palabras. Datos (JSON): ${JSON.stringify(r)}`;
+
+  try {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(()=>({}));
+      throw new Error(err?.error?.message || ('HTTP ' + resp.status));
+    }
+    const data = await resp.json();
+    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!texto) throw new Error('Respuesta vacía de la IA');
+    salida.innerHTML = formatearTexto(texto);
+  } catch (e) {
+    console.warn('Error IA', e);
+    salida.innerHTML = `<p class="text-amberx-400 text-sm">No se pudo usar la IA (${esc(e.message)}). Te muestro el análisis local:</p>` + informeLocal(r);
+  } finally {
+    btn.disabled = false; btn.textContent = '✨ Analizar mis finanzas';
+  }
+}
+
+// Convierte texto plano de la IA (con **negritas** y saltos) a HTML simple.
+function formatearTexto(t) {
+  return esc(t)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+}
+
+// Motor local: redacta un informe tipo asesor sin necesidad de IA externa.
+function informeLocal(r) {
+  const p = [];
+  const tasa = r.tasaAhorro != null ? Number(r.tasaAhorro) : null;
+  p.push(`<p><b>📋 Diagnóstico del mes.</b> Tus ingresos suman ${fmt(r.ingMes)} y tus gastos ${fmt(r.gasMes)}, dejándote un saldo de <b>${fmt(r.saldo)}</b>.</p>`);
+  if (tasa != null) {
+    const ok = tasa >= r.metaAhorro;
+    p.push(`<p><b>💚 Tasa de ahorro.</b> Estás ahorrando <b>${tasa}%</b> de lo que ganas, ${ok?'por encima':'por debajo'} de tu meta del ${r.metaAhorro}%. ${ok?'Excelente disciplina; mantenla.':'Conviene recortar para acercarte a la meta.'}</p>`);
+  }
+  const cats = Object.entries(r.porCategoria).sort((a,b)=>b[1]-a[1]);
+  if (cats.length) {
+    const [c1,v1] = cats[0];
+    p.push(`<p><b>🎯 Mayor concentración.</b> Tu principal gasto es <b>${c1}</b> con ${fmt(v1)} (${(v1/r.gasMes*100).toFixed(0)}% del total). ${v1/r.gasMes>0.4?'Es una proporción alta: vigílala de cerca.':'Está dentro de un rango razonable.'}</p>`);
+  }
+  if (r.deudaTarjetas > 0) {
+    const ratio = r.ingMes>0 ? (r.deudaTarjetas/r.ingMes*100).toFixed(0) : '?';
+    p.push(`<p><b>💳 Deuda.</b> Tu deuda de tarjetas es ${fmt(r.deudaTarjetas)} (${ratio}% de tus ingresos del mes). ${ratio>30?'Está sobre el 30%: prioriza amortizarla para cuidar tu salud crediticia.':'Está en un nivel manejable.'}</p>`);
+  }
+  if (r.nGastosHormiga > 0) {
+    p.push(`<p><b>🐜 Gasto hormiga.</b> ${r.nGastosHormiga} compras menores a S/30 suman <b>${fmt(r.gastoHormiga)}</b>. Pequeñas, pero acumuladas pesan: identificar y cortar 2-3 hábitos aquí libera dinero sin sacrificar lo importante.</p>`);
+  }
+  // Recomendaciones
+  const recs = [];
+  if (tasa != null && tasa < r.metaAhorro) recs.push(`Fija un tope semanal para tu categoría más alta (${cats[0]?.[0]||'gastos variables'}) y revísalo cada domingo.`);
+  if (r.deudaTarjetas > 0) recs.push(`Destina un monto fijo mensual a bajar la tarjeta de mayor TCEA antes de asumir nuevos consumos.`);
+  if (r.gastoHormiga > 0) recs.push(`Convierte tu gasto hormiga del mes (${fmt(r.gastoHormiga)}) en un abono automático a una meta de ahorro.`);
+  recs.push(`Automatiza tu ahorro: aparta primero el ${r.metaAhorro}% apenas entre tu ingreso, y vive con el resto.`);
+  p.push(`<p class="pt-1"><b>✅ Recomendaciones.</b></p><ul class="list-disc pl-5 space-y-1">${recs.slice(0,3).map(x=>`<li>${x}</li>`).join('')}</ul>`);
+  return p.join('');
+}
+
+// =================================================================
+// 9d) AJUSTES: modo análisis e IA
+// =================================================================
+function toggleAvanzado() {
+  state.config.analisisAvanzado = !state.config.analisisAvanzado;
+  guardar(); aplicarModoAnalisis(); renderAnalitica();
+  toast(state.config.analisisAvanzado ? 'Análisis avanzado activado 📊' : 'Análisis básico', 'info');
+}
+function aplicarModoAnalisis() {
+  const on = !!state.config.analisisAvanzado;
+  document.body.classList.toggle('analisis-avanzado', on);
+  const t = $('#toggle-avanzado'), dot = $('#toggle-avanzado-dot');
+  if (t) { t.classList.toggle('bg-brand-500', on); t.classList.toggle('bg-slate-300', !on); }
+  if (dot) dot.style.transform = on ? 'translateX(20px)' : '';
+}
+function guardarGeminiKey() {
+  state.config.geminiKey = $('#cfg-gemini-key').value.trim();
+  guardar();
+  $('#gemini-estado').textContent = state.config.geminiKey ? '✅ Clave guardada. La IA está activa.' : 'Clave borrada. Se usará el análisis local.';
+  $('#gemini-estado').className = 'text-xs mt-2 ' + (state.config.geminiKey ? 'text-brand-500' : 'text-slate-400');
+}
+
 function renderTodo() {
   $('#banner-ejemplo').classList.toggle('hidden', !state.config.ejemplo);
   renderNav();
@@ -1894,7 +2278,7 @@ function escucharNube() {
   if (_unsub) _unsub();
   _primerSnapshot = true;
   _unsub = db.collection('usuarios').doc(auth.currentUser.uid)
-    .onSnapshot({ includeMetadataChanges: false }, doc => {
+    .onSnapshot(doc => {
       const remoto = doc.exists ? doc.data().state : null;
 
       if (_primerSnapshot) {
@@ -2016,14 +2400,20 @@ async function forzarBajada() {
 }
 
 // Inicializa la interfaz una vez que tenemos el estado cargado.
+let _appIniciada = false;
 function iniciarApp() {
-  aplicarTema();
-  aplicarToggleEmpresa();
-  $('#f-ing-mes').value = mesActual();
-  $('#f-gas-mes').value = mesActual();
-  $('#f-emp-mes').value = mesActual();
-  $('#cfg-meta-ahorro').value = state.config.metaAhorro;
-  renderTodo();
+  try {
+    aplicarTema();
+    aplicarToggleEmpresa();
+    $('#f-ing-mes').value = mesActual();
+    $('#f-gas-mes').value = mesActual();
+    $('#f-emp-mes').value = mesActual();
+    $('#cfg-meta-ahorro').value = state.config.metaAhorro;
+    aplicarModoAnalisis();
+    if ($('#cfg-gemini-key')) $('#cfg-gemini-key').value = state.config.geminiKey || '';
+    renderTodo();
+    _appIniciada = true;
+  } catch (e) { console.error('Error al iniciar la app', e); }
 }
 
 // Observa el estado de sesión: decide entre mostrar login o arrancar la app.
@@ -2037,6 +2427,7 @@ auth.onAuthStateChanged(user => {
     $('#auth-screen').classList.add('hidden');
     if (localStorage.getItem(LS_KEY)) { cargar(); iniciarApp(); } // muestra local al instante
     escucharNube();    // la nube sincroniza/actualiza (y arranca si no había local)
+    setTimeout(() => { if (!_appIniciada) { cargar(); iniciarApp(); } }, 2500); // red de seguridad
   } else {
     if (_unsub) { _unsub(); _unsub = null; }
     $('#auth-screen').classList.remove('hidden');
