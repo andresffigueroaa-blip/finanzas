@@ -1899,13 +1899,22 @@ function escucharNube() {
 
       if (_primerSnapshot) {
         _primerSnapshot = false;
+        const habiaLocal = !!localStorage.getItem(LS_KEY);
         if (remoto) {
-          // La nube ya tiene tus datos: son la verdad. Los adoptamos.
-          state = remoto; migrar(); iniciarApp(); marcarSync('ok');
-        } else {
-          // Cuenta nueva sin datos en la nube: subimos lo que haya local/ejemplo.
-          cargar(); iniciarApp(); subirNube();
+          const tsRemoto = doc.data().actualizado || 0;
+          const tsLocal  = (state && state._ts) || 0;
+          if (!habiaLocal || tsRemoto > tsLocal) {  // la nube manda
+            state = remoto; migrar();
+            localStorage.setItem(LS_KEY, JSON.stringify(state));
+            iniciarApp();
+          } else if (tsLocal > tsRemoto) {           // lo local es más nuevo: subir
+            subirNube();
+          }
+        } else {                                     // la nube está vacía
+          if (!habiaLocal) { cargar(); iniciarApp(); }
+          subirNube();                               // primera subida de esta cuenta
         }
+        marcarSync('ok');
         return;
       }
 
@@ -2026,7 +2035,8 @@ auth.onAuthStateChanged(user => {
     const emailEl = document.getElementById('cuenta-email');
     if (emailEl) emailEl.textContent = user.email;
     $('#auth-screen').classList.add('hidden');
-    escucharNube();   // arranca la sincronización en tiempo real
+    if (localStorage.getItem(LS_KEY)) { cargar(); iniciarApp(); } // muestra local al instante
+    escucharNube();    // la nube sincroniza/actualiza (y arranca si no había local)
   } else {
     if (_unsub) { _unsub(); _unsub = null; }
     $('#auth-screen').classList.remove('hidden');
