@@ -38,6 +38,11 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db   = firebase.firestore();
+  // Persistencia offline: si registras algo sin internet o cierras la app antes
+  // de que suba, Firestore guarda el cambio y lo envía solo al reconectar.
+  db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+  // Mantener la sesión iniciada entre visitas (no pedir login cada vez).
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -422,13 +427,20 @@
         <p class="text-sm text-slate-500 dark:text-slate-400 mb-5">Tu información, bajo tu control</p>
 
         <div class="space-y-4 max-w-xl">
-          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft flex items-center justify-between gap-4">
-            <div>
-              <p class="font-bold">👤 Tu cuenta</p>
-              <p id="cuenta-email" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">—</p>
-              <p id="sync-estado" class="text-xs font-medium text-brand-500 mt-1">☁️ Sincronizado</p>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <p class="font-bold">👤 Tu cuenta</p>
+                <p id="cuenta-email" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">—</p>
+                <p id="sync-estado" class="text-xs font-medium text-brand-500 mt-1">☁️ Sincronizado</p>
+              </div>
+              <button onclick="cerrarSesion()" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 font-semibold text-sm shrink-0">Cerrar sesión</button>
             </div>
-            <button onclick="cerrarSesion()" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 font-semibold text-sm shrink-0">Cerrar sesión</button>
+            <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button onclick="forzarSubida()" class="px-3 py-2 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-600 dark:text-brand-400 font-semibold text-xs">⬆️ Subir este dispositivo a la nube</button>
+              <button onclick="forzarBajada()" class="px-3 py-2 rounded-xl bg-ocean-500/10 hover:bg-ocean-500/20 text-ocean-600 dark:text-ocean-400 font-semibold text-xs">⬇️ Traer datos de la nube</button>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">Úsalos solo si los dispositivos quedaron con datos distintos: «Subir» hace ganar a este equipo; «Traer» hace ganar a la nube.</p>
           </div>
 
           <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft flex items-center justify-between gap-4">
@@ -704,15 +716,17 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const ordenarFecha = arr => arr.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
 const etiquetaMes = m => MESES_ABR[parseInt(m.slice(5)) - 1] + ' ' + m.slice(2, 4);
 
-// Guarda al instante en el navegador (caché local) y sube a la nube con un
-// pequeño retraso, para no escribir en Firestore en cada tecla.
+// Guarda al instante en el navegador (caché local) y sube a la nube enseguida.
+// Debounce corto (600ms) solo para no escribir en cada tecla; si cierras la app
+// antes, la persistencia offline de Firestore envía el cambio igualmente.
 let _syncTimer = null;
 function guardar() {
+  state._ts = Date.now();                    // marca de tiempo de esta edición
   localStorage.setItem(LS_KEY, JSON.stringify(state));
-  if (!auth.currentUser) return;            // sin sesión: solo caché local
+  if (!auth.currentUser) return;             // sin sesión: solo caché local
   clearTimeout(_syncTimer);
   marcarSync('pendiente');
-  _syncTimer = setTimeout(subirNube, 1200);
+  _syncTimer = setTimeout(subirNube, 600);
 }
 
 // Sube el estado completo al documento del usuario en Firestore.
@@ -720,7 +734,7 @@ async function subirNube() {
   if (!auth.currentUser) return;
   try {
     await db.collection('usuarios').doc(auth.currentUser.uid)
-      .set({ state, actualizado: Date.now() });
+      .set({ state, actualizado: state._ts || Date.now() });
     marcarSync('ok');
   } catch (e) {
     console.warn('No se pudo sincronizar', e);
@@ -1870,21 +1884,51 @@ function renderTodo() {
 //  AUTENTICACIÓN Y SINCRONIZACIÓN EN LA NUBE
 // ============================================================
 
-// Trae el estado desde Firestore. Si el usuario aún no tiene datos en la nube,
-// usa lo que haya en este navegador (o datos de ejemplo) y lo sube por primera vez.
-async function cargarDesdeNube() {
-  try {
-    const doc = await db.collection('usuarios').doc(auth.currentUser.uid).get();
-    if (doc.exists && doc.data().state) {
-      state = doc.data().state;
-      migrar();
-      return;
-    }
-  } catch (e) {
-    console.warn('No se pudo leer de la nube, uso caché local', e);
-  }
-  cargar();          // llena state desde localStorage o datos de ejemplo
-  await subirNube(); // primera subida a la nube para esta cuenta
+// Suscripción en tiempo real al documento del usuario. Cualquier cambio hecho
+// en otro dispositivo aparece aquí solo, sin recargar. Y NUNCA pisa datos:
+// si la nube ya tiene info, esa manda; solo subimos al crear la cuenta.
+let _unsub = null;
+let _primerSnapshot = true;
+
+function escucharNube() {
+  if (_unsub) _unsub();
+  _primerSnapshot = true;
+  _unsub = db.collection('usuarios').doc(auth.currentUser.uid)
+    .onSnapshot({ includeMetadataChanges: false }, doc => {
+      const remoto = doc.exists ? doc.data().state : null;
+
+      if (_primerSnapshot) {
+        _primerSnapshot = false;
+        if (remoto) {
+          // La nube ya tiene tus datos: son la verdad. Los adoptamos.
+          state = remoto; migrar(); iniciarApp(); marcarSync('ok');
+        } else {
+          // Cuenta nueva sin datos en la nube: subimos lo que haya local/ejemplo.
+          cargar(); iniciarApp(); subirNube();
+        }
+        return;
+      }
+
+      // Snapshots siguientes = cambios que llegan de OTRO dispositivo.
+      if (!remoto) return;
+      if (doc.metadata.hasPendingWrites) return;   // es escritura nuestra, ignorar
+      if (hayModalAbierto()) return;               // no interrumpir si estás editando
+      const tsRemoto = doc.data().actualizado || 0;
+      const tsLocal  = (state && state._ts) || 0;
+      if (tsRemoto <= tsLocal) return;             // lo nuestro es igual o más nuevo
+      state = remoto; migrar();
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      iniciarApp();
+      toast('Datos actualizados desde otro dispositivo ☁️', 'info');
+    }, err => {
+      console.warn('Error de sincronización en vivo', err);
+      marcarSync('error');
+    });
+}
+
+// ¿Hay algún modal abierto? (para no pisar mientras el usuario edita)
+function hayModalAbierto() {
+  return [...document.querySelectorAll('.modal')].some(m => !m.classList.contains('hidden'));
 }
 
 function mostrarAuthError(msg) {
@@ -1937,7 +1981,29 @@ $('#btn-reset').onclick = async () => {
 
 function cerrarSesion() {
   clearTimeout(_syncTimer);
+  if (_unsub) { _unsub(); _unsub = null; }
   subirNube().finally(() => auth.signOut());
+}
+
+// Fuerza que los datos de ESTE dispositivo suban a la nube (gana este equipo).
+async function forzarSubida() {
+  if (!confirm('Vas a subir los datos de ESTE dispositivo a la nube y reemplazar lo que haya allí. ¿Continuar?')) return;
+  state._ts = Date.now();
+  await subirNube();
+  toast('Datos de este dispositivo subidos a la nube ☁️');
+}
+
+// Fuerza traer lo último de la nube a ESTE dispositivo (gana la nube).
+async function forzarBajada() {
+  if (!confirm('Vas a reemplazar los datos de ESTE dispositivo por los de la nube. ¿Continuar?')) return;
+  try {
+    const doc = await db.collection('usuarios').doc(auth.currentUser.uid).get();
+    if (doc.exists && doc.data().state) {
+      state = doc.data().state; migrar();
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      iniciarApp(); toast('Datos traídos de la nube ✅');
+    } else toast('La nube aún no tiene datos guardados', 'info');
+  } catch (e) { toast('No se pudo leer de la nube', 'error'); }
 }
 
 // Inicializa la interfaz una vez que tenemos el estado cargado.
@@ -1952,21 +2018,26 @@ function iniciarApp() {
 }
 
 // Observa el estado de sesión: decide entre mostrar login o arrancar la app.
-auth.onAuthStateChanged(async user => {
+auth.onAuthStateChanged(user => {
   if (user) {
     $('#auth-email').value = '';
     $('#auth-pass').value = '';
     limpiarAuthError();
-    await cargarDesdeNube();
-    iniciarApp();
     const emailEl = document.getElementById('cuenta-email');
     if (emailEl) emailEl.textContent = user.email;
-    marcarSync('ok');
     $('#auth-screen').classList.add('hidden');
+    escucharNube();   // arranca la sincronización en tiempo real
   } else {
+    if (_unsub) { _unsub(); _unsub = null; }
     $('#auth-screen').classList.remove('hidden');
   }
 });
+
+// Antes de cerrar o esconder la pestaña, fuerza la subida de cambios pendientes.
+['visibilitychange', 'pagehide', 'beforeunload'].forEach(ev =>
+  window.addEventListener(ev, () => {
+    if (auth.currentUser && _syncTimer) { clearTimeout(_syncTimer); subirNube(); }
+  }));
 
 </script>
 
