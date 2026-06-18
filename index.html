@@ -2170,7 +2170,8 @@ async function analizarConIA() {
   const prompt = `Eres un asesor financiero personal experto, formado en las mejores escuelas de finanzas, asesorando a una persona joven en Perú (moneda Soles, S/). Analiza estos datos de sus finanzas del mes y dale un informe claro, directo y técnico pero comprensible, en español, con: 1) diagnóstico general, 2) lo que está haciendo bien, 3) focos de alerta concretos con cifras, 4) 3 recomendaciones accionables. Sé específico con los números. Usa un tono de asesor profesional cercano. Máximo 280 palabras. Datos (JSON): ${JSON.stringify(r)}`;
 
   // Probamos varios modelos en orden; usamos el primero que tu cuota permita.
-  const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  // (Modelos vigentes a 2026; los 1.5/2.0 fueron descontinuados por Google.)
+  const modelos = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-3.5-flash'];
   let texto = '', ultimoError = '';
   try {
     for (const modelo of modelos) {
