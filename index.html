@@ -2169,19 +2169,28 @@ async function analizarConIA() {
 
   const prompt = `Eres un asesor financiero personal experto, formado en las mejores escuelas de finanzas, asesorando a una persona joven en Perú (moneda Soles, S/). Analiza estos datos de sus finanzas del mes y dale un informe claro, directo y técnico pero comprensible, en español, con: 1) diagnóstico general, 2) lo que está haciendo bien, 3) focos de alerta concretos con cifras, 4) 3 recomendaciones accionables. Sé específico con los números. Usa un tono de asesor profesional cercano. Máximo 280 palabras. Datos (JSON): ${JSON.stringify(r)}`;
 
+  // Probamos varios modelos en orden; usamos el primero que tu cuota permita.
+  const modelos = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+  let texto = '', ultimoError = '';
   try {
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    if (!resp.ok) {
-      const err = await resp.json().catch(()=>({}));
-      throw new Error(err?.error?.message || ('HTTP ' + resp.status));
+    for (const modelo of modelos) {
+      try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(()=>({}));
+          ultimoError = err?.error?.message || ('HTTP ' + resp.status);
+          continue; // este modelo falló (cuota, etc.): probamos el siguiente
+        }
+        const data = await resp.json();
+        texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (texto) break; // ¡funcionó!
+      } catch (e) { ultimoError = e.message; }
     }
-    const data = await resp.json();
-    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!texto) throw new Error('Respuesta vacía de la IA');
+    if (!texto) throw new Error(ultimoError || 'Ningún modelo disponible');
     salida.innerHTML = formatearTexto(texto);
   } catch (e) {
     console.warn('Error IA', e);
