@@ -191,6 +191,23 @@
           </div>
         </div>
 
+        <!-- Compromiso del mes (pasivos) -->
+        <div id="d-compromiso-card" class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft mb-6">
+          <div class="flex flex-wrap items-start justify-between gap-4 mb-3">
+            <div>
+              <h3 class="font-bold">📌 Compromiso del mes</h3>
+              <p class="text-xs text-slate-400">Tus pasivos fijos vs lo que entra</p>
+            </div>
+            <button onclick="mostrarTab('pasivos')" class="text-xs text-ocean-500 hover:underline shrink-0">Ver todos →</button>
+          </div>
+          <div class="grid grid-cols-3 gap-3 mb-3">
+            <div><p class="text-xs text-slate-400">Comprometido</p><p id="d-comprometido" class="text-lg font-extrabold text-danger-500"></p></div>
+            <div><p class="text-xs text-slate-400">Ingreso del mes</p><p id="d-ingreso-ref" class="text-lg font-extrabold"></p></div>
+            <div><p class="text-xs text-slate-400">Libre real</p><p id="d-libre" class="text-lg font-extrabold"></p></div>
+          </div>
+          <div id="d-compromiso-lista" class="space-y-1"></div>
+        </div>
+
         <!-- Gráficos -->
         <div class="grid lg:grid-cols-2 gap-4">
           <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-soft">
@@ -387,6 +404,41 @@
         <div id="lista-gastos" class="space-y-2"></div>
       </section>
 
+      <!-- ==================== PASIVOS / COMPROMISOS DEL MES ==================== -->
+      <section id="sec-pasivos" class="seccion hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-2xl font-extrabold">📌 Pasivos</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Todo lo que pagas mes a mes: alquiler, cuotas, servicios y suscripciones</p>
+          </div>
+          <button onclick="abrirPasivo()" class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm shadow-card">+ Nuevo pasivo</button>
+        </div>
+
+        <!-- Resumen -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">💸 Comprometido este mes</p>
+            <p id="pas-comprometido" class="text-xl font-extrabold mt-1 text-danger-500"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">📅 Próximo a vencer</p>
+            <p id="pas-proximo" class="text-sm font-bold mt-1"></p>
+          </div>
+          <div class="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-soft">
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">✅ Pagados este mes</p>
+            <p id="pas-pagados" class="text-xl font-extrabold mt-1 text-brand-600 dark:text-brand-400"></p>
+          </div>
+        </div>
+
+        <div id="lista-pasivos" class="space-y-3"></div>
+
+        <!-- Pasivos liquidados (historial) -->
+        <div id="pasivos-liquidados-wrap" class="hidden mt-6">
+          <h3 class="font-bold text-sm text-slate-500 dark:text-slate-400 mb-2">🏁 Pasivos liquidados</h3>
+          <div id="lista-pasivos-liquidados" class="space-y-2"></div>
+        </div>
+      </section>
+
       <!-- ==================== 4) TARJETAS / DEUDAS ==================== -->
       <section id="sec-tarjetas" class="seccion hidden">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -573,6 +625,7 @@
   <form id="form-gasto" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
     <h3 id="titulo-gasto" class="font-extrabold text-lg">Nuevo gasto</h3>
     <input type="hidden" id="gas-id">
+    <input type="hidden" id="gas-pasivo-id">
     <div class="grid grid-cols-2 gap-3">
       <div><label class="text-xs font-semibold text-slate-500">Fecha</label>
         <input type="date" id="gas-fecha" required class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
@@ -583,7 +636,7 @@
       <select id="gas-cat" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></select></div>
     <div><label class="text-xs font-semibold text-slate-500">Método de pago</label>
       <select id="gas-metodo" onchange="toggleSelectTarjeta()" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm">
-        <option>Efectivo</option><option>Débito</option><option>Tarjeta de crédito</option>
+        <option>Efectivo</option><option>Débito</option><option>Tarjeta de crédito</option><option>Yape</option><option>Plin</option>
       </select></div>
     <div id="gas-tarjeta-wrap" class="hidden"><label class="text-xs font-semibold text-slate-500">¿Con qué tarjeta? <span class="text-orange-500">(sumará a su deuda)</span></label>
       <select id="gas-tarjeta" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></select></div>
@@ -592,6 +645,61 @@
     <div class="flex gap-2 pt-2">
       <button type="button" onclick="cerrarModal('modal-gasto')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
       <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-danger-500 hover:bg-danger-600 text-white text-sm font-semibold">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<!-- Modal: Pasivo -->
+<div id="modal-pasivo" class="modal hidden fixed inset-0 z-50 modal-bg bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <form id="form-pasivo" class="pop-in w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+    <h3 id="titulo-pasivo" class="font-extrabold text-lg">Nuevo pasivo</h3>
+    <input type="hidden" id="pas-id">
+    <div><label class="text-xs font-semibold text-slate-500">Nombre</label>
+      <input type="text" id="pas-nombre" required placeholder="Ej: Alquiler San Isidro, Celular BCP, Netflix" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    <div><label class="text-xs font-semibold text-slate-500">Tipo de pasivo</label>
+      <select id="pas-tipo" onchange="togglePasivoCuota()" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm">
+        <option value="recurrente">🔁 Recurrente fijo (alquiler, Netflix)</option>
+        <option value="cuota">📆 Cuota a plazos (celular, electro)</option>
+        <option value="variable">📊 Servicio variable (luz, agua)</option>
+      </select></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Categoría</label>
+        <select id="pas-cat" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></select></div>
+      <div><label class="text-xs font-semibold text-slate-500">Monto mensual (S/)</label>
+        <input type="number" id="pas-monto" min="0.01" step="0.01" required placeholder="0.00" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold text-slate-500">Día de cobro</label>
+        <input type="number" id="pas-dia" min="1" max="31" required placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <div><label class="text-xs font-semibold text-slate-500">Método de pago</label>
+        <select id="pas-metodo" onchange="togglePasivoTarjeta()" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm">
+          <option>Efectivo</option><option>Débito</option><option>Tarjeta de crédito</option><option>Yape</option><option>Plin</option>
+        </select></div>
+    </div>
+    <div id="pas-tarjeta-wrap" class="hidden"><label class="text-xs font-semibold text-slate-500">¿Con qué tarjeta?</label>
+      <select id="pas-tarjeta" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm"></select></div>
+
+    <!-- Campos extra solo para cuotas -->
+    <div id="pas-cuota-campos" class="hidden space-y-3 rounded-xl bg-ocean-50 dark:bg-slate-800/60 p-3 border border-ocean-100 dark:border-slate-700">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-xs font-semibold text-slate-500">Total de cuotas</label>
+          <input type="number" id="pas-total-cuotas" min="2" max="60" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"></div>
+        <div><label class="text-xs font-semibold text-slate-500">Cuota N° actual</label>
+          <input type="number" id="pas-cuota-actual" min="1" max="60" placeholder="1" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      </div>
+      <div><label class="text-xs font-semibold text-slate-500">Monto total original (S/) <span class="text-slate-400">— opcional</span></label>
+        <input type="number" id="pas-monto-total" min="0" step="0.01" placeholder="4200" class="mt-1 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"></div>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="pas-sin-interes" class="w-4 h-4"> Sin intereses</label>
+    </div>
+
+    <label class="flex items-center justify-between gap-2 text-sm pt-1">
+      <span class="font-semibold text-slate-600 dark:text-slate-300">Activo</span>
+      <input type="checkbox" id="pas-activo" checked class="w-4 h-4">
+    </label>
+
+    <div class="flex gap-2 pt-2">
+      <button type="button" onclick="cerrarModal('modal-pasivo')" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+      <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold">Guardar</button>
     </div>
   </form>
 </div>
@@ -864,6 +972,12 @@ function datosEjemplo() {
   return {
     config: {dark: false, empresa: false, ejemplo: true, metaAhorro: 20},
     presupuestos: {Comida: 700, Salidas: 300, Transporte: 250, Suscripciones: 50},
+    pasivos: [
+      {id: uid(), ej: true, nombre: 'Alquiler depa', tipo: 'recurrente', cat: 'Alquiler', monto: 950, dia: 2, metodo: 'Débito', tarjetaId: null, activo: true},
+      {id: uid(), ej: true, nombre: 'Netflix + Spotify', tipo: 'recurrente', cat: 'Suscripciones', monto: 45.90, dia: 5, metodo: 'Tarjeta de crédito', tarjetaId: idBcp, activo: true},
+      {id: uid(), ej: true, nombre: 'Celular iPhone — BCP', tipo: 'cuota', cat: 'Otros', monto: 350, dia: 10, metodo: 'Tarjeta de crédito', tarjetaId: idBcp, totalCuotas: 12, cuotaActual: 3, montoTotal: 4200, sinInteres: true, activo: true},
+      {id: uid(), ej: true, nombre: 'Luz (Enel)', tipo: 'variable', cat: 'Otros', monto: 120, dia: 18, metodo: 'Yape', tarjetaId: null, activo: true}
+    ],
     ingresos, gastos,
     tarjetas: [
       {id: idBcp, ej: true, nombre: 'Visa Clásica', banco: 'BCP', linea: 5000, tcea: 84.9, cierre: 15, pago: 5,
@@ -889,6 +1003,7 @@ function datosEjemplo() {
 // Migración: asegura que datos guardados con versiones anteriores tengan los campos nuevos
 function migrar() {
   state.presupuestos = state.presupuestos || {};
+  state.pasivos = state.pasivos || [];
   if (state.config.metaAhorro == null) state.config.metaAhorro = 20;
   if (state.config.analisisAvanzado == null) state.config.analisisAvanzado = false;
   if (state.config.geminiKey == null) state.config.geminiKey = '';
@@ -932,6 +1047,7 @@ const TABS = [
   {id: 'analitica', icono: '📊', nombre: 'Analítica'},
   {id: 'ingresos',  icono: '📈', nombre: 'Ingresos'},
   {id: 'gastos',    icono: '📉', nombre: 'Gastos'},
+  {id: 'pasivos',   icono: '📌', nombre: 'Pasivos'},
   {id: 'tarjetas',  icono: '💳', nombre: 'Tarjetas'},
   {id: 'cobrar',    icono: '🤝', nombre: 'Me deben'},
   {id: 'metas',     icono: '🎯', nombre: 'Metas'},
@@ -961,6 +1077,7 @@ function mostrarTab(id) {
   renderNav();
   if (id === 'dashboard') renderDashboard();
   if (id === 'analitica') renderAnalitica(); // re-crear charts cuando la sección es visible
+  if (id === 'pasivos') renderPasivos();
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
@@ -1020,6 +1137,23 @@ function renderDashboard() {
     al.classList.remove('hidden');
     al.innerHTML = `🚨 <b>Ritmo de gasto alto:</b> llevas ${fmt(gasMes)} en ${hoy.getDate()} días. A este ritmo cerrarías el mes con <b>${fmt(proy)}</b>, superando tus ingresos del mes (${fmt(ingMes)}). Revisa la pestaña 📊 Analítica.`;
   } else al.classList.add('hidden');
+
+  // Compromiso del mes (pasivos)
+  const activos = (state.pasivos || []).filter(p => p.activo !== false);
+  const comprometido = activos.reduce((a, p) => a + Number(p.monto || 0), 0);
+  const libre = ingMes - comprometido;
+  $('#d-comprometido').textContent = fmt(comprometido);
+  $('#d-ingreso-ref').textContent = fmt(ingMes);
+  $('#d-libre').textContent = fmt(libre);
+  $('#d-libre').className = 'text-lg font-extrabold ' + (libre >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-danger-500');
+  $('#d-compromiso-card').classList.toggle('hidden', activos.length === 0);
+  $('#d-compromiso-lista').innerHTML = activos.slice(0, 6).map(p => {
+    const pagado = pasivoPagadoEsteMes(p);
+    return `<div class="flex items-center justify-between text-xs">
+      <span class="text-slate-500 dark:text-slate-400 truncate">${pagado ? '✅' : '⏰'} ${esc(p.nombre)} · día ${p.dia}</span>
+      <span class="font-semibold shrink-0 ml-2 ${pagado ? 'text-brand-500' : 'text-slate-500 dark:text-slate-400'}">${fmt(p.monto)}</span>
+    </div>`;
+  }).join('');
 
   renderGraficos();
 }
@@ -1150,6 +1284,7 @@ function abrirGasto(id) {
   const x = id ? state.gastos.find(g => g.id === id) : null;
   $('#titulo-gasto').textContent = x ? 'Editar gasto' : 'Nuevo gasto';
   $('#gas-id').value = x ? x.id : '';
+  $('#gas-pasivo-id').value = x && x.pasivoId ? x.pasivoId : '';
   $('#gas-fecha').value = x ? x.fecha : hoyISO();
   $('#gas-monto').value = x ? x.monto : '';
   $('#gas-cat').innerHTML = CATS_GASTO.map(c => `<option ${x && x.cat === c ? 'selected' : ''}>${c}</option>`).join('');
@@ -1162,14 +1297,24 @@ function abrirGasto(id) {
 $('#form-gasto').addEventListener('submit', e => {
   e.preventDefault();
   const id = $('#gas-id').value;
+  const pasivoId = $('#gas-pasivo-id').value || null;
   const esTC = $('#gas-metodo').value === 'Tarjeta de crédito';
   const datos = {
     fecha: $('#gas-fecha').value, monto: Number($('#gas-monto').value),
     cat: $('#gas-cat').value, desc: $('#gas-desc').value.trim(),
-    metodo: $('#gas-metodo').value, tarjetaId: esTC ? $('#gas-tarjeta').value : null
+    metodo: $('#gas-metodo').value, tarjetaId: esTC ? $('#gas-tarjeta').value : null,
+    pasivoId
   };
   if (id) Object.assign(state.gastos.find(g => g.id === id), datos);
   else state.gastos.push({id: uid(), ...datos});
+  // Si este gasto paga un pasivo en cuotas, avanza la cuota (y lo liquida al terminar)
+  if (!id && pasivoId) {
+    const p = state.pasivos.find(x => x.id === pasivoId);
+    if (p && p.tipo === 'cuota') {
+      p.cuotaActual = (p.cuotaActual || 1) + 1;
+      if (p.cuotaActual > p.totalCuotas) { p.activo = false; toast('🏁 ¡Pasivo liquidado! Pagaste la última cuota'); }
+    }
+  }
   guardar(); cerrarModal('modal-gasto'); renderTodo();
   toast(id ? 'Gasto actualizado ✅' : (esTC ? 'Gasto registrado y sumado a tu tarjeta 💳' : 'Gasto registrado ✅'));
 });
@@ -1203,6 +1348,182 @@ function renderGastos() {
     </div>`;
   }).join('')
   : `<p class="text-center text-sm text-slate-400 py-10">Sin gastos con estos filtros 🎉</p>`;
+}
+
+// =================================================================
+// PASIVOS / COMPROMISOS DEL MES
+// =================================================================
+const ICONO_PASIVO = {recurrente: '🔁', cuota: '📆', variable: '📊'};
+
+function togglePasivoCuota() {
+  $('#pas-cuota-campos').classList.toggle('hidden', $('#pas-tipo').value !== 'cuota');
+}
+function togglePasivoTarjeta() {
+  const esTC = $('#pas-metodo').value === 'Tarjeta de crédito';
+  $('#pas-tarjeta-wrap').classList.toggle('hidden', !esTC);
+  if (esTC) {
+    if (!state.tarjetas.length) {
+      toast('Primero registra una tarjeta en la pestaña 💳 Tarjetas', 'error');
+      $('#pas-metodo').value = 'Efectivo';
+      $('#pas-tarjeta-wrap').classList.add('hidden');
+      return;
+    }
+    $('#pas-tarjeta').innerHTML = state.tarjetas.map(t => `<option value="${t.id}">${esc(t.nombre)} · ${esc(t.banco)}</option>`).join('');
+  }
+}
+
+function abrirPasivo(id) {
+  const x = id ? state.pasivos.find(p => p.id === id) : null;
+  $('#titulo-pasivo').textContent = x ? 'Editar pasivo' : 'Nuevo pasivo';
+  $('#pas-id').value = x ? x.id : '';
+  $('#pas-nombre').value = x ? x.nombre : '';
+  $('#pas-tipo').value = x ? x.tipo : 'recurrente';
+  $('#pas-cat').innerHTML = CATS_GASTO.map(c => `<option ${x && x.cat === c ? 'selected' : ''}>${c}</option>`).join('');
+  $('#pas-monto').value = x ? x.monto : '';
+  $('#pas-dia').value = x ? x.dia : '';
+  $('#pas-metodo').value = x ? x.metodo : 'Efectivo';
+  $('#pas-total-cuotas').value = x && x.totalCuotas ? x.totalCuotas : '';
+  $('#pas-cuota-actual').value = x && x.cuotaActual ? x.cuotaActual : 1;
+  $('#pas-monto-total').value = x && x.montoTotal ? x.montoTotal : '';
+  $('#pas-sin-interes').checked = x ? !!x.sinInteres : false;
+  $('#pas-activo').checked = x ? x.activo !== false : true;
+  togglePasivoCuota();
+  togglePasivoTarjeta();
+  if (x && x.tarjetaId) $('#pas-tarjeta').value = x.tarjetaId;
+  abrirModal('modal-pasivo');
+}
+
+$('#form-pasivo').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = $('#pas-id').value;
+  const tipo = $('#pas-tipo').value;
+  const esTC = $('#pas-metodo').value === 'Tarjeta de crédito';
+  const datos = {
+    nombre: $('#pas-nombre').value.trim(), tipo, cat: $('#pas-cat').value,
+    monto: Number($('#pas-monto').value), dia: Number($('#pas-dia').value),
+    metodo: $('#pas-metodo').value, tarjetaId: esTC ? $('#pas-tarjeta').value : null,
+    activo: $('#pas-activo').checked
+  };
+  if (tipo === 'cuota') {
+    datos.totalCuotas = Number($('#pas-total-cuotas').value) || 1;
+    datos.cuotaActual = Number($('#pas-cuota-actual').value) || 1;
+    datos.montoTotal = Number($('#pas-monto-total').value) || 0;
+    datos.sinInteres = $('#pas-sin-interes').checked;
+  }
+  if (id) Object.assign(state.pasivos.find(p => p.id === id), datos);
+  else state.pasivos.push({id: uid(), ...datos});
+  guardar(); cerrarModal('modal-pasivo'); renderTodo();
+  toast(id ? 'Pasivo actualizado ✅' : 'Pasivo registrado 📌');
+});
+
+function eliminarPasivo(id) {
+  if (!confirm('¿Eliminar este pasivo? (Los gastos ya registrados no se borran)')) return;
+  state.pasivos = state.pasivos.filter(p => p.id !== id);
+  guardar(); renderTodo(); toast('Pasivo eliminado', 'info');
+}
+function clonarPasivo(id) {
+  const x = state.pasivos.find(p => p.id === id);
+  if (!x) return;
+  abrirPasivo();
+  $('#pas-nombre').value = x.nombre + ' (copia)';
+  $('#pas-tipo').value = x.tipo;
+  $('#pas-cat').value = x.cat;
+  $('#pas-monto').value = x.monto;
+  $('#pas-dia').value = x.dia;
+  $('#pas-metodo').value = x.metodo;
+  togglePasivoCuota(); togglePasivoTarjeta();
+  if (x.tarjetaId) $('#pas-tarjeta').value = x.tarjetaId;
+  if (x.tipo === 'cuota') { $('#pas-total-cuotas').value = x.totalCuotas; $('#pas-cuota-actual').value = x.cuotaActual; }
+}
+
+// ¿Ya se registró un gasto de este pasivo en el mes en curso?
+function pasivoPagadoEsteMes(p) {
+  const mes = mesActual();
+  return state.gastos.some(g => g.pasivoId === p.id && (g.fecha || '').startsWith(mes));
+}
+
+// Pre-llena el modal de gasto con los datos del pasivo para confirmar el pago.
+function registrarPagoPasivo(id) {
+  const p = state.pasivos.find(x => x.id === id);
+  if (!p) return;
+  abrirGasto();
+  $('#gas-pasivo-id').value = p.id;
+  $('#titulo-gasto').textContent = 'Registrar pago: ' + p.nombre;
+  $('#gas-fecha').value = hoyISO();
+  $('#gas-monto').value = p.monto;
+  $('#gas-cat').value = p.cat;
+  $('#gas-metodo').value = p.metodo;
+  $('#gas-desc').value = p.nombre + (p.tipo === 'cuota' ? ` (cuota ${p.cuotaActual}/${p.totalCuotas})` : '');
+  toggleSelectTarjeta();
+  if (p.tarjetaId) $('#gas-tarjeta').value = p.tarjetaId;
+}
+
+function renderPasivos() {
+  const activos = state.pasivos.filter(p => p.activo !== false);
+  const comprometido = activos.reduce((a, p) => a + Number(p.monto || 0), 0);
+  $('#pas-comprometido').textContent = fmt(comprometido);
+
+  // Próximo a vencer (por día de cobro respecto a hoy)
+  const hoy = new Date().getDate();
+  const orden = activos.slice().sort((a, b) => {
+    const da = a.dia >= hoy ? a.dia - hoy : a.dia - hoy + 31;
+    const db = b.dia >= hoy ? b.dia - hoy : b.dia - hoy + 31;
+    return da - db;
+  });
+  $('#pas-proximo').textContent = orden.length ? `${orden[0].nombre} · día ${orden[0].dia} · ${fmt(orden[0].monto)}` : '—';
+
+  const pagados = activos.filter(pasivoPagadoEsteMes).length;
+  $('#pas-pagados').textContent = `${pagados} de ${activos.length}`;
+
+  $('#lista-pasivos').innerHTML = activos.length ? activos.map(p => {
+    const pagado = pasivoPagadoEsteMes(p);
+    const t = p.tarjetaId ? state.tarjetas.find(x => x.id === p.tarjetaId) : null;
+    let cuotaBloque = '';
+    if (p.tipo === 'cuota' && p.totalCuotas) {
+      const pct = Math.min(100, (p.cuotaActual / p.totalCuotas) * 100);
+      const restantes = Math.max(0, p.totalCuotas - p.cuotaActual + 1);
+      const saldoRest = p.montoTotal ? Math.max(0, p.montoTotal - (p.cuotaActual - 1) * p.monto) : restantes * p.monto;
+      cuotaBloque = `
+        <div class="mt-2">
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-500 dark:text-slate-400">Cuota ${p.cuotaActual} de ${p.totalCuotas} · quedan ${restantes}</span>
+            <span class="font-semibold">${fmt(saldoRest)} por pagar</span>
+          </div>
+          <div class="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+            <div class="barra h-full rounded-full bg-gradient-to-r from-ocean-500 to-brand-500" style="width:${pct.toFixed(1)}%"></div>
+          </div>
+        </div>`;
+    }
+    return `
+    <div class="rounded-2xl bg-white dark:bg-slate-900 border ${pagado ? 'border-brand-400/50' : 'border-slate-200 dark:border-slate-800'} p-4 shadow-soft">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/40 flex items-center justify-center text-lg shrink-0">${ICONO_PASIVO[p.tipo] || '📌'}</div>
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-sm truncate">${esc(p.nombre)} ${pagado ? '<span class="text-xs font-bold text-brand-500">✅ pagado</span>' : '<span class="text-xs text-amberx-500">⏰ pendiente</span>'}</p>
+          <p class="text-xs text-slate-400">${esc(p.cat)} · día ${p.dia} · ${esc(p.metodo)}${t ? ' (' + esc(t.nombre) + ')' : ''}</p>
+        </div>
+        <p class="font-extrabold text-danger-500 whitespace-nowrap">${fmt(p.monto)}</p>
+      </div>
+      ${cuotaBloque}
+      <div class="flex flex-wrap gap-1.5 mt-3">
+        ${pagado ? '' : `<button onclick="registrarPagoPasivo('${p.id}')" class="px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold">💵 Registrar pago del mes</button>`}
+        <button onclick="abrirPasivo('${p.id}')" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs" title="Editar">✏️</button>
+        <button onclick="clonarPasivo('${p.id}')" class="px-2.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-xs" title="Clonar">📋</button>
+        <button onclick="eliminarPasivo('${p.id}')" class="px-2.5 py-1.5 rounded-lg hover:bg-danger-50 dark:hover:bg-danger-600/20 text-xs" title="Eliminar">🗑️</button>
+      </div>
+    </div>`;
+  }).join('')
+  : `<p class="text-center text-sm text-slate-400 py-10">Sin pasivos registrados. Agrega tu alquiler, suscripciones o cuotas 📌</p>`;
+
+  // Pasivos liquidados (cuotas completadas, inactivas)
+  const liquidados = state.pasivos.filter(p => p.activo === false && p.tipo === 'cuota' && p.cuotaActual > p.totalCuotas);
+  $('#pasivos-liquidados-wrap').classList.toggle('hidden', !liquidados.length);
+  $('#lista-pasivos-liquidados').innerHTML = liquidados.map(p => `
+    <div class="flex items-center gap-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 px-3 py-2 opacity-70">
+      <span class="text-lg">🏁</span>
+      <span class="text-sm font-semibold flex-1 truncate">${esc(p.nombre)}</span>
+      <span class="text-xs text-brand-500 font-bold">Liquidado · ${p.totalCuotas} cuotas</span>
+    </div>`).join('');
 }
 
 // =================================================================
@@ -1540,13 +1861,13 @@ function borrarTodo() {
   if (!confirm('⚠️ Vas a borrar TODOS tus datos (ingresos, gastos, tarjetas, metas...). ¿Estás seguro?')) return;
   if (!confirm('Última confirmación: esta acción NO se puede deshacer. ¿Borrar todo?')) return;
   const dark = state.config.dark, metaAhorro = state.config.metaAhorro || 20;
-  state = {config: {dark, empresa: false, ejemplo: false, metaAhorro}, presupuestos: {}, ingresos: [], gastos: [], tarjetas: [], cobrar: [], metas: [], empresa: []};
+  state = {config: {dark, empresa: false, ejemplo: false, metaAhorro}, presupuestos: {}, pasivos: [], ingresos: [], gastos: [], tarjetas: [], cobrar: [], metas: [], empresa: []};
   guardar(); aplicarToggleEmpresa(); renderTodo();
   toast('Todo borrado. Empieza de cero 🌱', 'info');
 }
 function limpiarEjemplo() {
   if (!confirm('¿Quitar los datos de ejemplo? Tus registros propios se conservan.')) return;
-  ['ingresos', 'gastos', 'tarjetas', 'cobrar', 'metas', 'empresa'].forEach(k => {
+  ['ingresos', 'gastos', 'tarjetas', 'cobrar', 'metas', 'empresa', 'pasivos'].forEach(k => {
     state[k] = state[k].filter(x => !x.ej);
   });
   state.config.ejemplo = false;
@@ -2258,6 +2579,7 @@ function renderTodo() {
   renderAnalitica();
   renderIngresos();
   renderGastos();
+  renderPasivos();
   renderTarjetas();
   renderCobrar();
   renderMetas();
