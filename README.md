@@ -1,98 +1,55 @@
-# 💰 MisFinanzas PE
+# 💰 MisFinanzas PE — v2 PRO
 
-> Aplicación web de gestión financiera personal, hecha para el contexto peruano (S/). Controla tus ingresos, gastos, deudas de tarjeta, cuentas por cobrar y metas de ahorro — todo desde un solo lugar, con gráficos que te ayudan a tomar mejores decisiones. Ahora con **cuenta propia y sincronización en la nube**: entra desde tu PC, tu celular o cualquier dispositivo y sigue justo donde lo dejaste.
+> Aplicación web de gestión financiera personal, hecha para el contexto peruano (S/). Controla tus ingresos, gastos, deudas de tarjeta, pasivos, patrimonio y metas — con score de salud financiera, plan para salir de deudas, regla 50/30/20, radar de suscripciones, calculadoras peruanas (CTS, grati, sueldo neto) y asesor con IA. Con **cuenta propia y sincronización en la nube**.
 
 🔗 **App en vivo:** [https://andresffigueroaa-blip.github.io/finanzas/](https://andresffigueroaa-blip.github.io/finanzas/)
 
 ---
 
-## ✨ Características
+## ✨ Novedades de la v2 PRO
 
-- 🔐 **Cuenta propia** — inicia sesión con correo y contraseña; tus datos te siguen a todos tus dispositivos.
-- ☁️ **Sincronización en la nube** — edita en la PC y aparece en el cel (y al revés), automáticamente.
-- 📊 **Dashboard** con saldo neto, ingresos, gastos y un indicador de salud financiera (🟢🟡🔴).
-- 💵 **Ingresos** — registra sueldo de planilla, recibos por honorarios (4ta) y freelance.
-- 🧾 **Gastos** — categorizados, con método de pago y filtros por mes.
-- 💳 **Tarjetas y deudas** — seguimiento de línea usada, fechas de pago y alertas.
-- 🤝 **Me deben** — cuentas por cobrar que se saldan con un clic.
-- 🎯 **Metas de ahorro** — con barras de progreso (ej. inicial de depa, TOEFL).
-- 📈 **Analítica** — tasa de ahorro, tendencias, proyecciones y detección de gasto hormiga.
-- 🌗 **Modo claro / oscuro.**
-- 💾 **Exportar / Importar** tus datos en JSON (respaldo adicional).
-- 📴 **Funciona sin conexión** — guarda localmente y sube los cambios cuando vuelve el internet.
+Inspiradas en lo mejor de YNAB, Monarch Money, Rocket Money, PocketGuard y Copilot — adaptadas al Perú:
 
----
+- 💯 **Score de salud financiera (0-100)** en el Inicio: 6 pilares (tasa de ahorro, deuda de tarjetas, colchón de emergencia, disciplina de presupuesto, gasto hormiga y diversificación de ingresos) que se recalculan con cada movimiento, con tu mayor oportunidad de mejora señalada.
+- 🧭 **Plan para salir de deudas** (pestaña Tarjetas): simula método **avalancha** (primero la TCEA más alta) vs **bola de nieve** (primero la deuda más chica). Te dice en cuántos meses quedas libre, cuánto pagarás de intereses y cuánto ahorras con cada método.
+- 💳 **Resumen global de deuda**: deuda total, % de uso de tus líneas, interés mensual estimado según TCEA y tarjetas en riesgo (>30%).
+- ⚖️ **Regla 50/30/20** (Analítica): necesidades / deseos / ahorro del mes vs el estándar. Cada gasto se clasifica solo por categoría, o tú lo defines al registrarlo.
+- 🔁 **Radar de suscripciones**: detecta cobros recurrentes en tus pasivos y gastos y te muestra su costo real al año.
+- 🏦 **Patrimonio neto**: registra tus activos (cuentas, efectivo, inversiones, CTS, cripto) y la app suma tus metas y cuentas por cobrar, resta deudas de tarjeta y cuotas pendientes → tu foto financiera real.
+- 🧰 **Herramientas Perú**: sueldo bruto → neto (AFP/ONP + renta de 5ta con UIT editable, 2026: S/ 5,500), gratificación (con bono 9% EsSalud), CTS, costo real de comprar en cuotas según TCEA, conversor S/ ⇄ US$ y fondo de emergencia ideal según tu gasto real.
+- 🌐 **Multi-idioma (ES/EN)** y **moneda de vista** en soles o dólares (con tipo de cambio configurable; los datos siempre se guardan en S/).
+- 🤖 **IA mejorada**: el asesor ahora recibe TODO tu contexto (tarjetas con TCEA y uso, pasivos, suscripciones, patrimonio, score, fuentes de ingreso) y entrega diagnóstico + plan de acción de 30 días + "jugada maestra". Además puedes **chatearle preguntas libres** ("¿qué tarjeta pago primero?").
+- 📉 **Más categorías**: 21 de gasto (Delivery, Servicios, Celular, Mascotas, Ropa, Viajes, Deudas, Ahorro e inversión...) y 10 de ingreso (Chambita extra, Negocio propio, Inversiones, Bonos y gratificaciones...). Cada gasto acepta etiqueta libre (ej: `viaje-cusco`).
+- 📄 **Exportar CSV** para abrir en Excel, además del respaldo JSON.
 
-## 🚀 Cómo usarla
-
-No necesitas instalar nada. Solo abre el link:
-
-👉 **[https://andresffigueroaa-blip.github.io/finanzas/](https://andresffigueroaa-blip.github.io/finanzas/)**
-
-1. La primera vez, pulsa **"Crear cuenta nueva"** con tu correo y una contraseña.
-2. Ya dentro, registra tus finanzas como siempre.
-3. Desde otro dispositivo (cel, laptop, etc.), abre el mismo link e **inicia sesión** con ese correo: verás todo igualito.
-
-> 💡 **Tip:** guárdala en favoritos para entrar siempre rápido.
-> ⚠️ Evita editar en dos dispositivos al mismo tiempo: gana el último que guarda.
+Todo es **compatible con tus datos existentes**: la migración agrega los campos nuevos sin tocar lo que ya registraste en la nube.
 
 ---
 
-## 🔒 Privacidad y seguridad
+## ✨ Características base
 
-- Para entrar a tu perfil hace falta **tu correo + tu contraseña**. Nadie más ve tus datos.
-- Cada usuario tiene un identificador único (`uid`) y sus datos viven en su propio documento. Las **reglas de seguridad de Firestore** garantizan que cada quien solo pueda leer y escribir lo suyo.
-- Las claves del bloque `firebaseConfig` en el código **no son secretas** (así lo diseñó Google): solo identifican el proyecto. La seguridad real la dan el login y las reglas, no esconder el código.
-
-### Reglas de Firestore recomendadas
-
-Cada usuario accede solo a su propio documento:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /usuarios/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
-
-Si quieres que **solo tú** puedas usar la app (que nadie más pueda ni registrarse y guardar datos), reemplaza `request.auth.uid == uid` por `request.auth.uid == "TU_UID"`, con tu uid copiado de **Authentication → Users**.
+- 🔐 Cuenta propia (correo y contraseña) + ☁️ sincronización en la nube (Firebase).
+- 📊 Dashboard con saldo neto, salud financiera y compromiso del mes.
+- 💵 Ingresos, 🧾 gastos con método de pago, 📌 pasivos (recurrentes, cuotas, variables).
+- 💳 Tarjetas con línea, TCEA, cierre y fecha de pago, con alertas.
+- 🤝 Me deben, 🎯 metas de ahorro con proyección por regresión lineal.
+- 📈 Analítica: KPIs, insights, anomalías (z-score), gasto hormiga, heatmap, presupuestos.
+- 🏢 Modo empresa, 🌗 modo claro/oscuro, 📴 funciona sin conexión.
 
 ---
 
-## 🛠️ Stack técnico
+## 🛠️ Stack
 
-- **HTML + JavaScript vanilla** (sin frameworks pesados)
-- **Tailwind CSS** (vía CDN) para el diseño
-- **Chart.js** (vía CDN) para los gráficos
-- **Firebase Authentication** para el login con correo/contraseña
-- **Cloud Firestore** para guardar y sincronizar los datos en la nube
-- **localStorage** como caché local (funciona offline)
-- Un solo archivo `index.html` — fácil de leer, mantener y desplegar
+HTML + JS vanilla · Tailwind (CDN) · Chart.js (CDN) · Firebase Auth + Firestore · un solo `index.html`.
 
----
+## 📦 Despliegue
 
-## 📦 Desplegar tu propia versión
+Igual que antes: sube `index.html` a tu repo con GitHub Pages activado. Las reglas de Firestore recomendadas no cambian.
 
-1. Haz un fork o descarga este repo.
-2. Crea un proyecto en [Firebase](https://console.firebase.google.com):
-   - Activa **Authentication → Correo electrónico/contraseña**.
-   - Crea una base de datos **Firestore** y publica las reglas de arriba.
-3. En **⚙️ Configuración del proyecto → Tus apps → web (`</>`)**, copia tu `firebaseConfig` y pégalo en el bloque marcado con ⚠️ dentro de `index.html`.
-4. Sube el `index.html` a tu repo y activa **GitHub Pages** en `Settings → Pages → Deploy from a branch → main → /(root)`.
-5. ¡Listo! Tu app estará en `https://tu-usuario.github.io/tu-repo/`.
+> ⚠️ Las calculadoras son referenciales: verifica tasas y comisiones vigentes con tu banco, AFP o SUNAT.
 
 ---
-
-## 👤 Autor
 
 Hecho por **Andrés Figueroa** (AEs · By Vigorr) — Ingeniero de infraestructura & analista de datos 🇵🇪
 
----
-
-<p align="center">
-  <em>Ordenar las finanzas a los 20s cambia todo el resto del juego. 📈</em>
-</p>
+<p align="center"><em>Ordenar las finanzas a los 20s cambia todo el resto del juego. 📈</em></p>
